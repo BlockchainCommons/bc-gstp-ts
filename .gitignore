@@ -1,0 +1,38 @@
+# Logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules
+
+# Build artifacts
+dist
+coverage
+docs
+*.tsbuildinfo
+
+# Benchmark output
+bench/results.json
+bench/results-parallel.json
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.sw?
+
+# OS
+.DS_Store
+
+# Env
+.env
+.env.*
+
+# Frozen pre-refactor build for local A/B benchmarking (regenerate via git)
+bench/baseline.index.mjs
+
+# Chart intermediates (PNGs are committed; HTML is regenerable)
+bench/charts/*.html
+
+# Rust cross-validation harness build artifacts
+tests/rust-validation/target

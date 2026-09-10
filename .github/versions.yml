@@ -1,0 +1,8 @@
+# Version map: TypeScript package -> Reference implementation
+# Used by workflow automation to track upstream reference versions.
+packages:
+  gstp:
+    npm: "@blockchaincommons/gstp"
+    repo: "BlockchainCommons/gstp-rust"
+    version: "0.13.0"
+    commit: "b1296017dd31a6845e1fdbd4ea9a0cad17047eb7"

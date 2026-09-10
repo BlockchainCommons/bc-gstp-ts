@@ -1,0 +1,105 @@
+{
+  "name": "@blockchaincommons/gstp",
+  "version": "1.0.0-beta.1",
+  "type": "module",
+  "sideEffects": false,
+  "description": "Gordian Sealed Transaction Protocol - A secure, authenticated, transport-agnostic data exchange protocol with distributed state management via Encrypted State Continuations (ESC)",
+  "license": "BSD-2-Clause-Patent",
+  "homepage": "https://github.com/BlockchainCommons/gstp-ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlockchainCommons/gstp-ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BlockchainCommons/gstp-ts/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "default": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "CHANGELOG.md",
+    "MIGRATION.md"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
+    "lint:fix": "eslint 'src/**/*.ts' 'tests/**/*.ts' --fix",
+    "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.ts' 'tests/**/*.ts'",
+    "typecheck": "tsc --noEmit",
+    "size": "size-limit",
+    "api:snapshot": "bun scripts/api-snapshot.mjs && node scripts/api-report.mjs --local",
+    "api:check": "bun scripts/api-snapshot.mjs --check && node scripts/api-report.mjs",
+    "clean": "rm -rf dist",
+    "docs": "typedoc",
+    "postinstall": "node scripts/pin-lint-typescript.mjs",
+    "prepublishOnly": "npm run build",
+    "lint:pkg": "publint && attw --pack . --profile node16",
+    "check:deps": "node scripts/check-deps.mjs"
+  },
+  "keywords": [
+    "gstp",
+    "gordian",
+    "sealed-transaction",
+    "protocol",
+    "cryptography",
+    "encryption",
+    "blockchain-commons",
+    "transport-agnostic",
+    "esc"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@eslint/js": "^10.0.1",
+    "@microsoft/api-extractor": "^7.58.9",
+    "@size-limit/preset-small-lib": "^13.0.3",
+    "@types/node": "^26.1.1",
+    "@typescript-eslint/eslint-plugin": "^8.64.0",
+    "@typescript-eslint/parser": "^8.64.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "ajv": "^8.20.0",
+    "eslint": "^10.7.0",
+    "prettier": "3.9.6",
+    "publint": "^0.3.21",
+    "size-limit": "^13.0.3",
+    "tsdown": "^0.22.8",
+    "typedoc": "^0.28.20",
+    "typescript": "^7.0.2",
+    "typescript6": "npm:typescript@^6.0.3",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@blockchaincommons/components": "^1.0.0-beta.1",
+    "@blockchaincommons/dcbor-compat": "^1.0.0-beta.1",
+    "@blockchaincommons/envelope": "^1.0.0-beta.1",
+    "@blockchaincommons/known-values": "^1.0.0-beta.1",
+    "@blockchaincommons/rand": "^1.0.0-beta.1",
+    "@blockchaincommons/xid": "^1.0.0-beta.1"
+  }
+}

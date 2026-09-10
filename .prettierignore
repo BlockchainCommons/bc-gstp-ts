@@ -1,0 +1,9 @@
+node_modules
+dist
+docs
+coverage
+examples
+scripts
+*.md
+*.json
+LICENSE
