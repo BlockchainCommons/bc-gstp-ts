@@ -7,9 +7,10 @@
  * type declarations, the ESM entry loads, and the CJS entry exposes the same
  * public names as the ESM one.
  *
- * This is the check that catches a build config change quietly deleting part of
- * the public surface - for example a `sideEffects` declaration that lets a
- * bundler drop the modules which install prototype extensions.
+ * What it catches: a missing or misdeclared entry point, and ESM/CJS surface
+ * drift. It does NOT catch a prototype extension being tree-shaken away, since
+ * that removes the method from both builds equally and leaves the named export
+ * sets identical; only a behavioural test in a consumer catches that.
  */
 
 import { createRequire } from "node:module";
