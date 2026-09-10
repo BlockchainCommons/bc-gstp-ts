@@ -82,17 +82,17 @@
     "@types/node": "^26.1.1",
     "@typescript-eslint/eslint-plugin": "^8.64.0",
     "@typescript-eslint/parser": "^8.64.0",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^5.0.0",
     "ajv": "^8.20.0",
     "eslint": "^10.7.0",
     "prettier": "3.9.6",
     "publint": "^0.3.21",
     "size-limit": "^13.0.3",
-    "tsdown": "^0.22.8",
+    "tsdown": "^0.23.0",
     "typedoc": "^0.28.20",
     "typescript": "^7.0.2",
     "typescript6": "npm:typescript@^6.0.3",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.0"
   },
   "dependencies": {
     "@blockchaincommons/components": "^1.0.0-beta.1",
