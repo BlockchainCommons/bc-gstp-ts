@@ -1,0 +1,57 @@
+name: Release
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    name: Build and Publish
+    runs-on: ubuntu-latest
+    environment: npm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      - name: Run tests
+        run: bun run test
+
+      - name: Run linting
+        run: bun run lint
+
+      - name: Validate package
+        run: bun run lint:pkg
+
+      - name: Publish to NPM
+        run: npm publish --provenance --tag beta
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Tag published version as latest
+        run: |
+          package_spec=$(node -p 'const pkg = require("./package.json"); pkg.name + "@" + pkg.version')
+          npm dist-tag add "$package_spec" latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

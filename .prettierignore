@@ -1,0 +1,4 @@
+tests/baseline/*.mjs
+tests/baseline/*.d.mts
+tests/baseline/node_modules
+tests/vectors/vectors.json

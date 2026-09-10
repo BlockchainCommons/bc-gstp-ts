@@ -1,0 +1,1301 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`freeze > builders, equality, tables and the guard 1`] = `
+[
+  "a.withNote(note) changes a = "false \\"\\""",
+  "equals across documents with the same XID = boolean:false",
+  "XIDDocument.equals of those documents = boolean:false",
+  "GSTP_ERROR_CODES frozen = boolean:true",
+  "details frozen = boolean:true",
+  "forged error passes the guard = boolean:false",
+  "envelope(cause) message = "boom"",
+]
+`;
+
+exports[`freeze > continuation fields that are not leaves 1`] = `
+[
+  "wrapped id, opened with it = throw:GstpError[Envelope]|invalid format",
+  "id with an assertion, opened with another id = throw:GstpError[ContinuationIdInvalid]|continuation ID invalid",
+  "wrapped validUntil, opened later = throw:GstpError[Envelope]|invalid format",
+  "validUntil that is not a date = throw:GstpError[Envelope]|dcbor error: the decoded CBOR value was not the expected type",
+  "id that is not an ARID = throw:GstpError[Envelope]|dcbor error: the decoded CBOR value was not the expected type",
+  "two ids = throw:GstpError[Envelope]|more than one assertion matches the predicate",
+  "not wrapped = throw:GstpError[Envelope]|cannot unwrap an envelope that was not wrapped",
+]
+`;
+
+exports[`freeze > envelope failures and parameter extraction 1`] = `
+[
+  "parameter(dup) = throw:GstpError[Envelope]|more than one assertion matches the predicate",
+  "extractParameter(dup) = throw:GstpError[Envelope]|more than one assertion matches the predicate",
+  "extractParameters(dup) = "number:1,number:2"",
+  "extractParameter(nested) = throw:GstpError[Envelope]|dcbor error: the decoded CBOR value was not the expected type",
+  "extractParameter(missing) = throw:GstpError[Envelope]|no assertion matches the predicate",
+  "extractOptionalParameter(missing) = undefined",
+  "extractParameters(p, expectInteger)[0] = number:42",
+  "extractParameter(big, expectInteger) = bigint:1152921504606846977",
+  "extractParameter(p, expectText) = throw:GstpError[Envelope]|dcbor error: the decoded CBOR value was not the expected type",
+  "objectForParameter(missing) = throw:GstpError[Envelope]|no assertion matches the predicate",
+  "failure.result = throw:GstpError[Envelope]|general error: Cannot get result from failed response",
+  "success.error = throw:GstpError[Envelope]|general error: Cannot get error from successful response",
+]
+`;
+
+exports[`freeze > state on a failed response 1`] = `
+[
+  "failure.withState = throw:GstpError[StateOnFailedResponse]|Cannot set state on a failed response",
+  "failure with state = throw:GstpError[StateOnFailedResponse]|Cannot set state on a failed response",
+  "earlyFailure.withState = throw:GstpError[StateOnFailedResponse]|Cannot set state on a failed response",
+]
+`;
+
+exports[`freeze > the JavaScript input domain 1`] = `
+[
+  "Continuation.from validUntil NaN = throw:TypeError|validUntil must be a valid Date or a CborDate",
+  "Continuation.from validFor NaN = throw:TypeError|validFor must be a finite, non-negative number of milliseconds",
+  "SealedRequest.from id string = throw:TypeError|id must be an ARID",
+  "withDate NaN = throw:TypeError|date must be a valid Date or a CborDate",
+  "open without recipient = throw:TypeError|recipient must be a Decrypter (the recipient's private keys)",
+  "SealedEvent.open without content = "text"",
+  "seal validUntil CborDate = "request(ARID(c66be27d)) [ 'body': «\\"f\\"»,"",
+  "open now CborDate = ARID(c66be27d)",
+]
+`;
+
+exports[`freeze > wrapped-error messages 1`] = `
+[
+  "wrong recipient = throw:GstpError[Envelope]|unknown recipient",
+  "unsigned message = throw:GstpError[Envelope]|cannot unwrap an envelope that was not wrapped",
+  "numeric event content read as text = throw:GstpError[Envelope]|general error: Failed to parse content",
+  "sender that is not a document = throw:GstpError[XID]|CBOR error",
+]
+`;
+
+exports[`golden > hand-written exchanges 1`] = `
+[
+  "## continuation "The state of things." id until 2024-07-04T11:12:11Z ×1
+format={
+    "The state of things."
+} [
+    'id': ARID(c66be27d)
+    'validUntil': 2024-07-04T11:12:11Z
+]
+open(id,-,-)=state="The state of things."; id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; validUntil=2024-07-04T11:12:11.000Z; equals=true",
+  "## continuation "The state of things." until 2024-07-04T12:11:11Z ×1
+format={
+    "The state of things."
+} [
+    'validUntil': 2024-07-04T12:11:11Z
+]
+open(-,-,-)=state="The state of things."; id=-; validUntil=2024-07-04T12:11:11.000Z; equals=true",
+  "## continuation "The state of things." id until 2024-07-04T11:12:11Z to 518684c5 ×5
+format=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(id,2024-07-04T11:11:41Z,518684c5)=state="The state of things."; id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; validUntil=2024-07-04T11:12:11.000Z; equals=true
+---
+format=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(id,2024-07-04T11:12:41Z,518684c5)=throw:ContinuationExpired|continuation expired
+---
+format=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(id,2024-07-04T11:11:41Z,518684c5)=throw:ContinuationIdInvalid|continuation ID invalid
+---
+format=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(id,2024-07-04T11:11:41Z,7eb559bb)=throw:Envelope[UnknownRecipient]|unknown recipient
+---
+format=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(id,2024-07-04T11:11:41Z,-)=throw:Envelope[NotWrapped]|cannot unwrap an envelope that was not wrapped",
+  "## request test(param1=42,param2="hello") from 7eb559bb state peer until 2024-07-04T11:12:11Z → 518684c5
+signed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"param1"❱: 42
+            ❰"param2"❱: "hello"
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedRequest(id: c66be27d, body: «"test"» [ ❰"param1"❱: 42, ❰"param2"❱: "hello" ], state: «"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ], peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ]; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; function=test; params=param1:42,param2:"hello"; note=This is a test; date=2024-07-04T11:11:11.000Z",
+  "## request test(param1=42,param2="hello") from 7eb559bb state peer until 2024-07-04T11:12:11Z → nobody
+signed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"param1"❱: 42
+            ❰"param2"❱: "hello"
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"param1"❱: 42
+            ❰"param2"❱: "hello"
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+",
+  "## response success "Records retrieved: 100-199" from 518684c5 state peer until 2024-07-04T12:11:11Z → 7eb559bb
+signed={
+    response(ARID(c66be27d)) [
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'result': "Records retrieved: 100-199"
+        'sender': XID(7c30cafe) [
+            'key': PublicKeys(b8164d99, SigningPublicKey(7c30cafe, SchnorrPublicKey(448e2868)), EncapsulationPublicKey(e472f495, X25519PublicKey(e472f495))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(7eb559bb)=summary=SealedResponse(id: c66be27d, result: "Records retrieved: 100-199", state: "The state of things.", peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=7c30cafe; state="The state of things."; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; ok=true; result="Records retrieved: 100-199"",
+  "## request test(param1=42,param2="hello") from 7eb559bb state peer until 2024-07-04T11:12:11Z → 518684c5+00000000
+signed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"param1"❱: 42
+            ❰"param2"❱: "hello"
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedRequest(id: c66be27d, body: «"test"» [ ❰"param1"❱: 42, ❰"param2"❱: "hello" ], state: «"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ], peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ]; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; function=test; params=param1:42,param2:"hello"; note=This is a test; date=2024-07-04T11:11:11.000Z
+open(00000000)=throw:Envelope[UnknownRecipient]|unknown recipient
+open(7eb559bb)=throw:Envelope[UnknownRecipient]|unknown recipient",
+  "## event "Something happened." from 7eb559bb state until 2024-07-04T11:12:11Z → 518684c5
+signed={
+    event(ARID(c66be27d)) [
+        'content': "Something happened."
+        'date': 2024-07-04T11:11:11Z
+        'note': "Event note"
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedEvent(id: c66be27d, content: "Something happened.", state: None, peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; content="Something happened."; note=Event note; date=2024-07-04T11:11:11.000Z",
+  "## event "Multi" from 7eb559bb → 518684c5+00000000+ffffffff
+signed={
+    event(ARID(c66be27d)) [
+        'content': "Multi"
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+    'hasRecipient': SealedMessage
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedEvent(id: c66be27d, content: "Multi", state: None, peer_continuation: None); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=-; content="Multi"; note=; date=-
+open(00000000)=summary=SealedEvent(id: c66be27d, content: "Multi", state: None, peer_continuation: None); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=-; content="Multi"; note=; date=-
+open(ffffffff)=summary=SealedEvent(id: c66be27d, content: "Multi", state: None, peer_continuation: None); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=-; content="Multi"; note=; date=-
+open(f00df00d)=throw:Envelope[UnknownRecipient]|unknown recipient",
+  "## continuation nextPage(fromRecord=100,toRecord=199) ×3
+format={
+    «"nextPage"» [
+        ❰"fromRecord"❱: 100
+        ❰"toRecord"❱: 199
+    ]
+}
+open(-,-,-)=state=«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ]; id=-; validUntil=-; equals=true
+---
+format={
+    «"nextPage"» [
+        ❰"fromRecord"❱: 100
+        ❰"toRecord"❱: 199
+    ]
+}
+open(-,2024-07-04T11:11:11Z,-)=state=«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ]; id=-; validUntil=-; equals=true
+---
+format={
+    «"nextPage"» [
+        ❰"fromRecord"❱: 100
+        ❰"toRecord"❱: 199
+    ]
+}
+open(id,-,-)=state=«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ]; id=-; validUntil=-; equals=true",
+  "## continuation 42 id ×3
+format={
+    42
+} [
+    'id': ARID(9f5a4c1e)
+]
+open(id,-,-)=state=42; id=9f5a4c1e2b7d8a3c6e0f1b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d; validUntil=-; equals=true
+---
+format={
+    42
+} [
+    'id': ARID(9f5a4c1e)
+]
+open(id,-,-)=throw:ContinuationIdInvalid|continuation ID invalid
+---
+format={
+    42
+} [
+    'id': ARID(9f5a4c1e)
+]
+open(-,-,-)=state=42; id=9f5a4c1e2b7d8a3c6e0f1b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d; validUntil=-; equals=true",
+  "## continuation "s" until 2024-07-04T11:11:11Z ×3
+format={
+    "s"
+} [
+    'validUntil': 2024-07-04T11:11:11Z
+]
+open(-,2024-07-04T11:11:11Z,-)=throw:ContinuationExpired|continuation expired
+---
+format={
+    "s"
+} [
+    'validUntil': 2024-07-04T11:11:11Z
+]
+open(-,2024-07-04T11:11:10Z,-)=state="s"; id=-; validUntil=2024-07-04T11:11:11.000Z; equals=true
+---
+format={
+    "s"
+} [
+    'validUntil': 2024-07-04T11:11:11Z
+]
+open(-,-,-)=state="s"; id=-; validUntil=2024-07-04T11:11:11.000Z; equals=true",
+  "## continuation "s" to 7eb559bb ×3
+format=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(-,-,7eb559bb)=state="s"; id=-; validUntil=-; equals=true
+---
+format=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(-,-,518684c5)=throw:Envelope[UnknownRecipient]|unknown recipient
+---
+format=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(-,-,-)=throw:Envelope[NotWrapped]|cannot unwrap an envelope that was not wrapped",
+  "## request test(param1=42,param2="hello") from 7eb559bb state peer until 2024-07-04T11:12:11Z unsigned → 518684c5
+signed=request(ARID(c66be27d)) [
+    'body': «"test"» [
+        ❰"param1"❱: 42
+        ❰"param2"❱: "hello"
+    ]
+    'date': 2024-07-04T11:11:11Z
+    'note': "This is a test"
+    'recipientContinuation': ENCRYPTED [
+        'hasRecipient': SealedMessage
+    ]
+    'sender': XID(71274df1) [
+        'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+            'allow': 'All'
+        ]
+    ]
+    'senderContinuation': ENCRYPTED [
+        'hasRecipient': SealedMessage
+    ]
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=throw:Envelope[NotWrapped]|cannot unwrap an envelope that was not wrapped",
+  "## request test(param1=42,param2="hello") from 7eb559bb state until 2024-07-04T11:12:11Z → 518684c5
+signed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"param1"❱: 42
+            ❰"param2"❱: "hello"
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedRequest(id: c66be27d, body: «"test"» [ ❰"param1"❱: 42, ❰"param2"❱: "hello" ], state: None, peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; function=test; params=param1:42,param2:"hello"; note=This is a test; date=2024-07-04T11:11:11.000Z",
+  "## request test(param1=42,param2="hello") from 7eb559bb state peer! until 2024-07-04T11:12:11Z → 518684c5
+signed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"param1"❱: 42
+            ❰"param2"❱: "hello"
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': {
+            «"nextPage"» [
+                ❰"fromRecord"❱: 100
+                ❰"toRecord"❱: 199
+            ]
+        } [
+            'validUntil': 2024-07-04T11:11:41Z
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=throw:Envelope[UnknownRecipient]|unknown recipient",
+  "## request test(param1=42,param2="hello") from 7eb559bb state peer until 2024-07-04T11:12:11Z → 518684c5
+signed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"param1"❱: 42
+            ❰"param2"❱: "hello"
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=throw:ContinuationExpired|continuation expired",
+  "## request test(param1=42,param2="hello") from 7eb559bb state peer until 2024-07-04T11:12:11Z → 518684c5
+signed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"param1"❱: 42
+            ❰"param2"❱: "hello"
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedRequest(id: c66be27d, body: «"test"» [ ❰"param1"❱: 42, ❰"param2"❱: "hello" ], state: «"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ], peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ]; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; function=test; params=param1:42,param2:"hello"; note=This is a test; date=2024-07-04T11:11:11.000Z",
+  "## request test(param1=42,param2="hello") from 7eb559bb state peer until 2024-07-04T11:12:11Z → 518684c5
+signed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"param1"❱: 42
+            ❰"param2"❱: "hello"
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedRequest(id: c66be27d, body: «"test"» [ ❰"param1"❱: 42, ❰"param2"❱: "hello" ], state: «"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ], peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ]; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; function=test; params=param1:42,param2:"hello"; note=This is a test; date=2024-07-04T11:11:11.000Z",
+  "## request test(param1=42,param2="hello") from 7eb559bb peer → 518684c5
+signed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"param1"❱: 42
+            ❰"param2"❱: "hello"
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedRequest(id: c66be27d, body: «"test"» [ ❰"param1"❱: 42, ❰"param2"❱: "hello" ], state: «"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ], peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ]; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; function=test; params=param1:42,param2:"hello"; note=This is a test; date=2024-07-04T11:11:11.000Z",
+  "## request test() from 7eb559bb state peer until 2024-07-04T11:12:11Z → 518684c5
+signed={
+    request(ARID(c66be27d)) [
+        'body': «"test"»
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedRequest(id: c66be27d, body: «"test"», state: «"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ], peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ]; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; function=test; params=; note=; date=-",
+  "## request test(nested=nextPage(fromRecord=100,toRecord=199),flag=true) from 7eb559bb state peer until 2024-07-04T11:12:11Z → 518684c5
+signed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"flag"❱: true
+            ❰"nested"❱: «"nextPage"» [
+                ❰"fromRecord"❱: 100
+                ❰"toRecord"❱: 199
+            ]
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedRequest(id: c66be27d, body: «"test"» [ ❰"flag"❱: true, ❰"nested"❱: «"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ] ], state: «"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ], peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ]; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; function=test; params=nested:«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ],flag:true; note=This is a test; date=2024-07-04T11:11:11.000Z",
+  "## response success "ok" from 518684c5 → 7eb559bb
+signed={
+    response(ARID(c66be27d)) [
+        'result': "ok"
+        'sender': XID(7c30cafe) [
+            'key': PublicKeys(b8164d99, SigningPublicKey(7c30cafe, SchnorrPublicKey(448e2868)), EncapsulationPublicKey(e472f495, X25519PublicKey(e472f495))) [
+                'allow': 'All'
+            ]
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(7eb559bb)=summary=SealedResponse(id: c66be27d, result: "ok", state: None, peer_continuation: None); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=7c30cafe; state=-; peer=-; ok=true; result="ok"",
+  "## response success "ok" from 518684c5 state until 2024-07-04T11:12:11Z → 7eb559bb
+signed={
+    response(ARID(c66be27d)) [
+        'result': "ok"
+        'sender': XID(7c30cafe) [
+            'key': PublicKeys(b8164d99, SigningPublicKey(7c30cafe, SchnorrPublicKey(448e2868)), EncapsulationPublicKey(e472f495, X25519PublicKey(e472f495))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(7eb559bb)=summary=SealedResponse(id: c66be27d, result: "ok", state: None, peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=7c30cafe; state=-; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; ok=true; result="ok"",
+  "## response failure !"bad" from 518684c5 → 7eb559bb
+signed={
+    response(ARID(c66be27d)) [
+        'error': "bad"
+        'sender': XID(7c30cafe) [
+            'key': PublicKeys(b8164d99, SigningPublicKey(7c30cafe, SchnorrPublicKey(448e2868)), EncapsulationPublicKey(e472f495, X25519PublicKey(e472f495))) [
+                'allow': 'All'
+            ]
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(7eb559bb)=summary=SealedResponse(id: c66be27d error: "bad", state: None, peer_continuation: None); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=7c30cafe; state=-; peer=-; ok=false; error="bad"",
+  "## response failure !"bad" from 518684c5 state until 2024-07-04T11:12:11Z → 7eb559bb
+throw:StateOnFailedResponse|Cannot set state on a failed response",
+  "## response earlyFailure from 518684c5 → 7eb559bb
+signed={
+    response('Unknown') [
+        'error': 'Unknown'
+        'sender': XID(7c30cafe) [
+            'key': PublicKeys(b8164d99, SigningPublicKey(7c30cafe, SchnorrPublicKey(448e2868)), EncapsulationPublicKey(e472f495, X25519PublicKey(e472f495))) [
+                'allow': 'All'
+            ]
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(7eb559bb)=summary=SealedResponse(id: 'Unknown' error: 'Unknown', state: None, peer_continuation: None); id=-; sender=7c30cafe; state=-; peer=-; ok=false; error='Unknown'",
+  "## response earlyFailure from 518684c5 state until 2024-07-04T11:12:11Z → 7eb559bb
+throw:StateOnFailedResponse|Cannot set state on a failed response",
+  "## response success nextPage(fromRecord=100,toRecord=199) from 518684c5 peer unsigned → 7eb559bb
+signed=response(ARID(c66be27d)) [
+    'recipientContinuation': ENCRYPTED [
+        'hasRecipient': SealedMessage
+    ]
+    'result': «"nextPage"» [
+        ❰"fromRecord"❱: 100
+        ❰"toRecord"❱: 199
+    ]
+    'sender': XID(7c30cafe) [
+        'key': PublicKeys(b8164d99, SigningPublicKey(7c30cafe, SchnorrPublicKey(448e2868)), EncapsulationPublicKey(e472f495, X25519PublicKey(e472f495))) [
+            'allow': 'All'
+        ]
+    ]
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(7eb559bb)=throw:Envelope[NotWrapped]|cannot unwrap an envelope that was not wrapped",
+  "## response success "late" from 518684c5 state until 2024-07-04T11:12:11Z → 7eb559bb
+signed={
+    response(ARID(c66be27d)) [
+        'result': "late"
+        'sender': XID(7c30cafe) [
+            'key': PublicKeys(b8164d99, SigningPublicKey(7c30cafe, SchnorrPublicKey(448e2868)), EncapsulationPublicKey(e472f495, X25519PublicKey(e472f495))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(7eb559bb)=summary=SealedResponse(id: c66be27d, result: "late", state: None, peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=7c30cafe; state=-; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; ok=true; result="late"",
+  "## response failure !"e" from 518684c5 → nobody
+signed={
+    response(ARID(c66be27d)) [
+        'error': "e"
+        'sender': XID(7c30cafe) [
+            'key': PublicKeys(b8164d99, SigningPublicKey(7c30cafe, SchnorrPublicKey(448e2868)), EncapsulationPublicKey(e472f495, X25519PublicKey(e472f495))) [
+                'allow': 'All'
+            ]
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed={
+    response(ARID(c66be27d)) [
+        'error': "e"
+        'sender': XID(7c30cafe) [
+            'key': PublicKeys(b8164d99, SigningPublicKey(7c30cafe, SchnorrPublicKey(448e2868)), EncapsulationPublicKey(e472f495, X25519PublicKey(e472f495))) [
+                'allow': 'All'
+            ]
+        ]
+    ]
+} [
+    'signed': Signature
+]
+",
+  "## event "v" from 7eb559bb until 2024-07-04T11:12:11Z → 518684c5
+signed={
+    event(ARID(c66be27d)) [
+        'content': "v"
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedEvent(id: c66be27d, content: "v", state: None, peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; content="v"; note=; date=-
+open(518684c5)=summary=SealedEvent(id: c66be27d, content: "v", state: None, peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; content="v"; note=; date=-",
+  "## event nextPage(fromRecord=100,toRecord=199) from 7eb559bb unsigned → 518684c5
+signed=event(ARID(c66be27d)) [
+    'content': «"nextPage"» [
+        ❰"fromRecord"❱: 100
+        ❰"toRecord"❱: 199
+    ]
+    'sender': XID(71274df1) [
+        'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+            'allow': 'All'
+        ]
+    ]
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=throw:Envelope[NotWrapped]|cannot unwrap an envelope that was not wrapped",
+  "## event 7 from 7eb559bb → nobody
+signed={
+    event(ARID(c66be27d)) [
+        'content': 7
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed={
+    event(ARID(c66be27d)) [
+        'content': 7
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+    ]
+} [
+    'signed': Signature
+]
+",
+  "## event "peer" from 7eb559bb peer → 518684c5
+signed={
+    event(ARID(c66be27d)) [
+        'content': "peer"
+        'recipientContinuation': {
+            "ps"
+        }
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=throw:Envelope[UnknownRecipient]|unknown recipient",
+  "## continuation "s" id(wrapped) ×2
+format={
+    "s"
+} [
+    'id': {
+        ARID(c66be27d)
+    }
+]
+open(id,-,-)=throw:Envelope[InvalidFormat]|invalid format
+---
+format={
+    "s"
+} [
+    'id': {
+        ARID(c66be27d)
+    }
+]
+open(-,-,-)=throw:Envelope[InvalidFormat]|invalid format",
+  "## continuation "s" id(node) ×2
+format={
+    "s"
+} [
+    'id': ARID(c66be27d) [
+        "x": 1
+    ]
+]
+open(id,-,-)=state="s"; id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; validUntil=-; equals=true
+---
+format={
+    "s"
+} [
+    'id': ARID(c66be27d) [
+        "x": 1
+    ]
+]
+open(id,-,-)=throw:ContinuationIdInvalid|continuation ID invalid",
+  "## continuation "s" id(text) ×1
+format={
+    "s"
+} [
+    'id': "not an arid"
+]
+open(-,-,-)=throw:Envelope[Cbor]|dcbor error: the decoded CBOR value was not the expected type",
+  "## continuation "s" until 2024-07-04T11:11:11Z(wrapped) ×2
+format={
+    "s"
+} [
+    'validUntil': {
+        2024-07-04T11:11:11Z
+    }
+]
+open(-,2024-07-04T12:11:11Z,-)=throw:Envelope[InvalidFormat]|invalid format
+---
+format={
+    "s"
+} [
+    'validUntil': {
+        2024-07-04T11:11:11Z
+    }
+]
+open(-,-,-)=throw:Envelope[InvalidFormat]|invalid format",
+  "## continuation "s" until 2024-07-04T11:11:11Z(node) ×2
+format={
+    "s"
+} [
+    'validUntil': 2024-07-04T11:11:11Z [
+        "x": 1
+    ]
+]
+open(-,2024-07-04T11:11:10Z,-)=state="s"; id=-; validUntil=2024-07-04T11:11:11.000Z; equals=true
+---
+format={
+    "s"
+} [
+    'validUntil': 2024-07-04T11:11:11Z [
+        "x": 1
+    ]
+]
+open(-,2024-07-04T11:11:12Z,-)=throw:ContinuationExpired|continuation expired",
+  "## continuation "s" until 2024-07-04T11:11:11Z(text) ×1
+format={
+    "s"
+} [
+    'validUntil': "not a date"
+]
+open(-,-,-)=throw:Envelope[Cbor]|dcbor error: the decoded CBOR value was not the expected type",
+  "## continuation "s" id id×2 ×2
+format={
+    "s"
+} [
+    'id': ARID(9f5a4c1e)
+    'id': ARID(c66be27d)
+]
+open(-,-,-)=throw:Envelope[AmbiguousPredicate]|more than one assertion matches the predicate
+---
+format={
+    "s"
+} [
+    'id': ARID(9f5a4c1e)
+    'id': ARID(c66be27d)
+]
+open(id,-,-)=throw:Envelope[AmbiguousPredicate]|more than one assertion matches the predicate",
+  "## continuation "s" id(wrapped) to 518684c5 ×1
+format=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(id,-,518684c5)=throw:Envelope[InvalidFormat]|invalid format",
+  "## request test(p=42,big=int:1152921504606846977,neg=int:-9007199254740993,dup=1,dup=2,nested=nextPage(fromRecord=100,toRecord=199),when=date:2024-07-04T11:11:11Z,who=arid:9f5a4c1e,raw=bytes:0102ff,flag=true) from 7eb559bb state peer extract p:int,p:text,big:int,big:text,neg:int,missing:text,dup:int,nested:text,when:date,when:int,who:arid,who:text,raw:bytes,flag:bool,flag:int until 2024-07-04T11:12:11Z → 518684c5
+signed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"big"❱: 1152921504606846977
+            ❰"dup"❱: 1
+            ❰"dup"❱: 2
+            ❰"flag"❱: true
+            ❰"neg"❱: -9007199254740993
+            ❰"nested"❱: «"nextPage"» [
+                ❰"fromRecord"❱: 100
+                ❰"toRecord"❱: 199
+            ]
+            ❰"p"❱: 42
+            ❰"raw"❱: Bytes(3)
+            ❰"when"❱: 2024-07-04T11:11:11Z
+            ❰"who"❱: ARID(9f5a4c1e)
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedRequest(id: c66be27d, body: «"test"» [ ❰"big"❱: 1152921504606846977, ❰"dup"❱: 1, ❰"dup"❱: 2, ❰"flag"❱: true, ❰"neg"❱: -9007199254740993, ❰"nested"❱: «"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ], ❰"p"❱: 42, ❰"raw"❱: Bytes(3), ❰"when"❱: 2024-07-04T11:11:11Z, ❰"who"❱: ARID(9f5a4c1e) ], state: «"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ], peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ]; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; function=test; params=p:42,big:1152921504606846977,neg:-9007199254740993,dup:throw:Envelope[AmbiguousPredicate]|more than one assertion matches the predicate,dup:throw:Envelope[AmbiguousPredicate]|more than one assertion matches the predicate,nested:«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ],when:2024-07-04T11:11:11Z,who:ARID(9f5a4c1e),raw:Bytes(3),flag:true; note=This is a test; date=2024-07-04T11:11:11.000Z; extract=p:int=42,p:text=throw:Envelope[Cbor]|dcbor error: the decoded CBOR value was not the expected type,big:int=1152921504606846977,big:text=throw:Envelope[Cbor]|dcbor error: the decoded CBOR value was not the expected type,neg:int=-9007199254740993,missing:text=throw:Envelope[NonexistentPredicate]|no assertion matches the predicate,dup:int=throw:Envelope[AmbiguousPredicate]|more than one assertion matches the predicate,nested:text=throw:Envelope[Cbor]|dcbor error: the decoded CBOR value was not the expected type,when:date=2024-07-04T11:11:11.000Z,when:int=throw:Envelope[Cbor]|dcbor error: the decoded CBOR value was not the expected type,who:arid=9f5a4c1e2b7d8a3c6e0f1b2a3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d,who:text=throw:Envelope[Cbor]|dcbor error: the decoded CBOR value was not the expected type,raw:bytes=0102ff,flag:bool=true,flag:int=throw:Envelope[Cbor]|dcbor error: the decoded CBOR value was not the expected type",
+  "## response failure !"e" from 518684c5 state-on-failure → 7eb559bb
+throw:StateOnFailedResponse|Cannot set state on a failed response",
+  "## response earlyFailure from 518684c5 state-on-failure → 7eb559bb
+throw:StateOnFailedResponse|Cannot set state on a failed response",
+  "## domain continuation.validUntil.nan (J3)
+throw:TypeError",
+  "## domain continuation.validFor.nan (J3)
+throw:TypeError",
+  "## domain request.id.string (J3)
+throw:TypeError",
+  "## domain request.withDate.nan (J3)
+throw:TypeError",
+  "## domain open.noRecipient (J3)
+throw:TypeError",
+  "## domain event.open.noContent (J4)
+string:text",
+  "## domain seal.validUntil.cborDate (J4)
+request(ARID(c66be27d)) [",
+  "## domain open.now.cborDate (J4)
+c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+  "## request test(param1=42,param2="hello") from 7eb559bb state peer until 2024-07-04T11:12:11Z pq → 518684c5
+signed={
+    request(ARID(<h>)) [
+        'body': «"test"» [
+            ❰"param1"❱: 42
+            ❰"param2"❱: "hello"
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage(MLKEM512)
+        ]
+        'sender': XID(<h>) [
+            'key': PublicKeys(<h>, SigningPublicKey(<h>, MLDSA44PublicKey(<h>)), EncapsulationPublicKey(<h>, MLKEM512PublicKey(<h>))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage(MLKEM512)
+        ]
+    ]
+} [
+    'signed': Signature(MLDSA44)
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage(MLKEM512)
+]
+open(<h>)=summary=SealedRequest(id: <h>, body: «"test"» [ ❰"param1"❱: 42, ❰"param2"❱: "hello" ], state: «"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ], peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=<h>; state=«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ]; peer=ENCRYPTED [ 'hasRecipient': SealedMessage(MLKEM512) ]; function=test; params=param1:42,param2:"hello"; note=This is a test; date=2024-07-04T11:11:11.000Z",
+  "## response success "Records retrieved: 100-199" from 518684c5 state peer until 2024-07-04T12:11:11Z pq → 7eb559bb
+signed={
+    response(ARID(<h>)) [
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage(MLKEM512)
+        ]
+        'result': "Records retrieved: 100-199"
+        'sender': XID(<h>) [
+            'key': PublicKeys(<h>, SigningPublicKey(<h>, MLDSA44PublicKey(<h>)), EncapsulationPublicKey(<h>, MLKEM512PublicKey(<h>))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage(MLKEM512)
+        ]
+    ]
+} [
+    'signed': Signature(MLDSA44)
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage(MLKEM512)
+]
+open(<h>)=summary=SealedResponse(id: <h>, result: "Records retrieved: 100-199", state: "The state of things.", peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=<h>; state="The state of things."; peer=ENCRYPTED [ 'hasRecipient': SealedMessage(MLKEM512) ]; ok=true; result="Records retrieved: 100-199"",
+  "## event "Something happened." from 7eb559bb state until 2024-07-04T11:12:11Z pq → 518684c5
+signed={
+    event(ARID(<h>)) [
+        'content': "Something happened."
+        'date': 2024-07-04T11:11:11Z
+        'note': "Event note"
+        'sender': XID(<h>) [
+            'key': PublicKeys(<h>, SigningPublicKey(<h>, MLDSA44PublicKey(<h>)), EncapsulationPublicKey(<h>, MLKEM512PublicKey(<h>))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage(MLKEM512)
+        ]
+    ]
+} [
+    'signed': Signature(MLDSA44)
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage(MLKEM512)
+]
+open(<h>)=summary=SealedEvent(id: <h>, content: "Something happened.", state: None, peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=<h>; state=-; peer=ENCRYPTED [ 'hasRecipient': SealedMessage(MLKEM512) ]; content="Something happened."; note=Event note; date=2024-07-04T11:11:11.000Z",
+]
+`;
+
+exports[`golden > reference cases 1`] = `
+[
+  "## continuation "The state of things." id until 2024-07-04T11:12:11Z ×1
+format={
+    "The state of things."
+} [
+    'id': ARID(c66be27d)
+    'validUntil': 2024-07-04T11:12:11Z
+]
+open(id,-,-)=state="The state of things."; id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; validUntil=2024-07-04T11:12:11.000Z; equals=true",
+  "## continuation "The state of things." until 2024-07-04T12:11:11Z ×1
+format={
+    "The state of things."
+} [
+    'validUntil': 2024-07-04T12:11:11Z
+]
+open(-,-,-)=state="The state of things."; id=-; validUntil=2024-07-04T12:11:11.000Z; equals=true",
+  "## continuation "The state of things." id until 2024-07-04T11:12:11Z to 518684c5 ×5
+format=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(id,2024-07-04T11:11:41Z,518684c5)=state="The state of things."; id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; validUntil=2024-07-04T11:12:11.000Z; equals=true
+---
+format=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(id,2024-07-04T11:12:41Z,518684c5)=throw:ContinuationExpired|continuation expired
+---
+format=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(id,2024-07-04T11:11:41Z,518684c5)=throw:ContinuationIdInvalid|continuation ID invalid
+---
+format=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(id,2024-07-04T11:11:41Z,7eb559bb)=throw:Envelope[UnknownRecipient]|unknown recipient
+---
+format=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(id,2024-07-04T11:11:41Z,-)=throw:Envelope[NotWrapped]|cannot unwrap an envelope that was not wrapped",
+  "## request test(param1=42,param2="hello") from 7eb559bb state peer until 2024-07-04T11:12:11Z → 518684c5
+signed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"param1"❱: 42
+            ❰"param2"❱: "hello"
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedRequest(id: c66be27d, body: «"test"» [ ❰"param1"❱: 42, ❰"param2"❱: "hello" ], state: «"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ], peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ]; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; function=test; params=param1:42,param2:"hello"; note=This is a test; date=2024-07-04T11:11:11.000Z",
+  "## request test(param1=42,param2="hello") from 7eb559bb state peer until 2024-07-04T11:12:11Z → nobody
+signed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"param1"❱: 42
+            ❰"param2"❱: "hello"
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"param1"❱: 42
+            ❰"param2"❱: "hello"
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+",
+  "## response success "Records retrieved: 100-199" from 518684c5 state peer until 2024-07-04T12:11:11Z → 7eb559bb
+signed={
+    response(ARID(c66be27d)) [
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'result': "Records retrieved: 100-199"
+        'sender': XID(7c30cafe) [
+            'key': PublicKeys(b8164d99, SigningPublicKey(7c30cafe, SchnorrPublicKey(448e2868)), EncapsulationPublicKey(e472f495, X25519PublicKey(e472f495))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(7eb559bb)=summary=SealedResponse(id: c66be27d, result: "Records retrieved: 100-199", state: "The state of things.", peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=7c30cafe; state="The state of things."; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; ok=true; result="Records retrieved: 100-199"",
+  "## request test(param1=42,param2="hello") from 7eb559bb state peer until 2024-07-04T11:12:11Z → 518684c5+00000000
+signed={
+    request(ARID(c66be27d)) [
+        'body': «"test"» [
+            ❰"param1"❱: 42
+            ❰"param2"❱: "hello"
+        ]
+        'date': 2024-07-04T11:11:11Z
+        'note': "This is a test"
+        'recipientContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedRequest(id: c66be27d, body: «"test"» [ ❰"param1"❱: 42, ❰"param2"❱: "hello" ], state: «"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ], peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ]; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; function=test; params=param1:42,param2:"hello"; note=This is a test; date=2024-07-04T11:11:11.000Z
+open(00000000)=throw:Envelope[UnknownRecipient]|unknown recipient
+open(7eb559bb)=throw:Envelope[UnknownRecipient]|unknown recipient",
+  "## event "Something happened." from 7eb559bb state until 2024-07-04T11:12:11Z → 518684c5
+signed={
+    event(ARID(c66be27d)) [
+        'content': "Something happened."
+        'date': 2024-07-04T11:11:11Z
+        'note': "Event note"
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+        'senderContinuation': ENCRYPTED [
+            'hasRecipient': SealedMessage
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedEvent(id: c66be27d, content: "Something happened.", state: None, peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; content="Something happened."; note=Event note; date=2024-07-04T11:11:11.000Z",
+  "## event "Multi" from 7eb559bb → 518684c5+00000000+ffffffff
+signed={
+    event(ARID(c66be27d)) [
+        'content': "Multi"
+        'sender': XID(71274df1) [
+            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [
+                'allow': 'All'
+            ]
+        ]
+    ]
+} [
+    'signed': Signature
+]
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+    'hasRecipient': SealedMessage
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedEvent(id: c66be27d, content: "Multi", state: None, peer_continuation: None); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=-; content="Multi"; note=; date=-
+open(00000000)=summary=SealedEvent(id: c66be27d, content: "Multi", state: None, peer_continuation: None); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=-; content="Multi"; note=; date=-
+open(ffffffff)=summary=SealedEvent(id: c66be27d, content: "Multi", state: None, peer_continuation: None); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=-; content="Multi"; note=; date=-
+open(f00df00d)=throw:Envelope[UnknownRecipient]|unknown recipient",
+]
+`;

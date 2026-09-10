@@ -1,0 +1,20 @@
+{
+ "count": 1,
+ "vectors": [
+  {
+   "name": "continuation \"The state of things.\" id until 2024-07-04T11:12:11Z \u00d71 (mismatch: one value flipped)",
+   "recipe": {
+    "k": "continuation",
+    "state": "The state of things.",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "validUntil": "2024-07-04T11:12:11Z",
+    "open": [
+     {
+      "expectedId": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc"
+     }
+    ]
+   },
+   "expect": "format={\n    \"The state of things.\"\n} [\n    'id': ARID(c66be27d)\n    'validUntil': 2024-07-04T11:12:11Z\n]\nopen(id,-,-)=state=\"The state of things.\"; id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; validUntil=2024-07-04T11:12:11.000Z; equals=false"
+  }
+ ]
+}

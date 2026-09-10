@@ -1,0 +1,21 @@
+[package]
+name = "gstp-validation"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# The reference at the commit the port tracks (`.github/versions.yml`): the
+# crates.io `gstp` 0.13.0 predates that commit (it is built over bc-envelope
+# 0.39), so the crate comes from the repository at the pinned revision; its
+# siblings are pinned to the released crates that revision resolves. Nothing
+# is patched.
+[dependencies]
+gstp = { git = "https://github.com/BlockchainCommons/gstp-rust", rev = "b1296017dd31a6845e1fdbd4ea9a0cad17047eb7" }
+bc-xid = "=0.23.0"
+bc-envelope = { version = "=0.43.0", features = ["multithreaded"] }
+bc-components = "=0.31.1"
+known-values = "=0.15.5"
+dcbor = "=0.25.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hex = "0.4"

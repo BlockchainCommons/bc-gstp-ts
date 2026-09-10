@@ -1,0 +1,77 @@
+{
+ "count": 5,
+ "vectors": [
+  {
+   "name": "continuation \"The state of things.\" id until 2024-07-04T11:12:11Z \u00d71 (match)",
+   "recipe": {
+    "k": "continuation",
+    "state": "The state of things.",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "validUntil": "2024-07-04T11:12:11Z",
+    "open": [
+     {
+      "expectedId": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc"
+     }
+    ]
+   },
+   "expect": "format={\n    \"The state of things.\"\n} [\n    'id': ARID(c66be27d)\n    'validUntil': 2024-07-04T11:12:11Z\n]\nopen(id,-,-)=state=\"The state of things.\"; id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; validUntil=2024-07-04T11:12:11.000Z; equals=true"
+  },
+  {
+   "name": "response failure !\"e\" from 518684c5 state-on-failure \u2192 7eb559bb (panic-mapped: the reference panics where the port throws a coded error)",
+   "recipe": {
+    "k": "response",
+    "kind": "failure",
+    "error": "e",
+    "sender": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "stateOnFailure": true,
+    "recipients": [
+     "7eb559bbbf6cce2632cf9f194aeb50943de7e1cbad54dcfab27a42759f5e2fed"
+    ],
+    "open": []
+   },
+   "expect": "throw:StateOnFailedResponse|Cannot set state on a failed response"
+  },
+  {
+   "name": "domain request.id.string (J3) (js-only J3)",
+   "recipe": {
+    "k": "domain",
+    "case": "request.id.string",
+    "cls": "J3"
+   },
+   "expect": "throw:TypeError"
+  },
+  {
+   "name": "domain open.now.cborDate (J4) (js-only J4)",
+   "recipe": {
+    "k": "domain",
+    "case": "open.now.cborDate",
+    "cls": "J4"
+   },
+   "expect": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc"
+  },
+  {
+   "name": "event \"Something happened.\" from 7eb559bb state until 2024-07-04T11:12:11Z \u2192 518684c5 (S1: the event summary prefix)",
+   "recipe": {
+    "k": "event",
+    "content": "Something happened.",
+    "note": "Event note",
+    "date": "2024-07-04T11:11:11Z",
+    "sender": "7eb559bbbf6cce2632cf9f194aeb50943de7e1cbad54dcfab27a42759f5e2fed",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "state": "Event state",
+    "validUntil": "2024-07-04T11:12:11Z",
+    "recipients": [
+     "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553"
+    ],
+    "open": [
+     {
+      "recipient": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553",
+      "now": "2024-07-04T11:11:11Z"
+     }
+    ]
+   },
+   "expect": "signed={\n    event(ARID(c66be27d)) [\n        'content': \"Something happened.\"\n        'date': 2024-07-04T11:11:11Z\n        'note': \"Event note\"\n        'sender': XID(71274df1) [\n            'key': PublicKeys(eb9b1cae, SigningPublicKey(71274df1, SchnorrPublicKey(9022010e)), EncapsulationPublicKey(b4f7059a, X25519PublicKey(b4f7059a))) [\n                'allow': 'All'\n            ]\n        ]\n        'senderContinuation': ENCRYPTED [\n            'hasRecipient': SealedMessage\n        ]\n    ]\n} [\n    'signed': Signature\n]\nsealed=ENCRYPTED [\n    'hasRecipient': SealedMessage\n]\nopen(518684c5)=summary=SealedEvent(id: c66be27d, content: \"Something happened.\", state: None, peer_continuation: Some); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=ENCRYPTED [ 'hasRecipient': SealedMessage ]; content=\"Something happened.\"; note=Event note; date=2024-07-04T11:11:11.000Z"
+  }
+ ]
+}

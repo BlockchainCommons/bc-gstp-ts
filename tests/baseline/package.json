@@ -1,0 +1,8 @@
+{
+  "name": "gstp-baseline-closure",
+  "private": true,
+  "description": "The published `@bcts` packages the frozen baseline bundle is built from (one copy of each).",
+  "dependencies": {
+    "@bcts/gstp": "1.0.0-beta.6"
+  }
+}

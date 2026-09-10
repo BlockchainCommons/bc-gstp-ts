@@ -1,0 +1,32 @@
+# Logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules
+
+# Build artifacts
+dist
+coverage
+# Generated TypeDoc output
+/docs/*
+*.tsbuildinfo
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.sw?
+
+# OS
+.DS_Store
+
+# Env
+.env
+.env.*
+
+# Rust cross-validation harness build artifacts
+tests/rust-validation/target
+
+# The baseline closure is installed, not committed
+tests/baseline/node_modules/

@@ -1,0 +1,113 @@
+{
+  "name": "@blockchaincommons/gstp",
+  "version": "1.0.0-beta.1",
+  "type": "module",
+  "sideEffects": false,
+  "description": "Gordian Sealed Transaction Protocol - A secure, authenticated, transport-agnostic data exchange protocol with distributed state management via Encrypted State Continuations (ESC)",
+  "license": "BSD-2-Clause-Patent",
+  "author": {
+    "name": "Blockchain Commons",
+    "email": "info@blockchaincommons.com",
+    "url": "https://www.blockchaincommons.com"
+  },
+  "homepage": "https://github.com/BlockchainCommons/bc-gstp-ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlockchainCommons/bc-gstp-ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/BlockchainCommons/bc-gstp-ts/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "default": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "MIGRATION.md"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
+    "lint:fix": "eslint 'src/**/*.ts' 'tests/**/*.ts' --fix",
+    "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.ts' 'tests/**/*.ts'",
+    "typecheck": "tsc --noEmit && tsc --project scripts/tsconfig.json",
+    "size": "size-limit",
+    "api:snapshot": "bun scripts/api-snapshot.ts && bun scripts/api-report.ts --local",
+    "api:check": "bun scripts/api-snapshot.ts --check && bun scripts/api-report.ts",
+    "clean": "rm -rf dist",
+    "docs": "typedoc",
+    "postinstall": "bun scripts/pin-lint-typescript.ts",
+    "prepublishOnly": "npm run build",
+    "lint:pkg": "publint && attw --pack . --profile node16",
+    "check:deps": "bun scripts/check-deps.ts",
+    "baseline:build": "bun scripts/build-baseline.ts",
+    "vectors:generate": "bun scripts/generate-vectors.ts",
+    "test:golden": "vitest run tests/golden-vectors.test.ts",
+    "test:differential": "vitest run tests/differential.test.ts"
+  },
+  "keywords": [
+    "gstp",
+    "gordian",
+    "sealed-transaction",
+    "protocol",
+    "cryptography",
+    "encryption",
+    "blockchain-commons",
+    "transport-agnostic",
+    "esc"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@blockchaincommons/rand": "^1.0.0-beta.3",
+    "@eslint/js": "^10.0.1",
+    "@microsoft/api-extractor": "^7.59.1",
+    "@size-limit/preset-small-lib": "^14.0.0",
+    "@types/node": "^26.6.1",
+    "@typescript-eslint/eslint-plugin": "^8.70.0",
+    "@typescript-eslint/parser": "^8.70.0",
+    "@vitest/coverage-v8": "^5.0.1",
+    "eslint": "^10.10.0",
+    "fast-check": "^4.10.1",
+    "prettier": "3.9.7",
+    "publint": "^0.3.24",
+    "size-limit": "^14.0.0",
+    "tsdown": "^0.23.0",
+    "typedoc": "^0.28.20",
+    "typescript": "^7.0.2",
+    "typescript6": "npm:typescript@^6.0.3",
+    "vitest": "^5.0.1"
+  },
+  "dependencies": {
+    "@blockchaincommons/components": "^1.0.0-beta.3",
+    "@blockchaincommons/dcbor": "^1.0.0-beta.3",
+    "@blockchaincommons/envelope": "^1.0.0-beta.3",
+    "@blockchaincommons/known-values": "^1.0.0-beta.3",
+    "@blockchaincommons/xid": "^1.0.0-beta.3"
+  }
+}

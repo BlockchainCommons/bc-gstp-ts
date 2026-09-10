@@ -1,0 +1,12 @@
+{
+ "count": 1,
+ "vectors": [
+  {
+   "name": "a recipe kind this program cannot read (unparsable)",
+   "recipe": {
+    "k": "bogus"
+   },
+   "expect": "nothing"
+  }
+ ]
+}
