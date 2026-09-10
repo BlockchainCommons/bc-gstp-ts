@@ -40,6 +40,11 @@ export default [
       // explicit annotations on exported consts the rule deems inferrable.
       "@typescript-eslint/no-inferrable-types": "off",
 
+      // Conflicts with tsconfig `isolatedDeclarations`, which REQUIRES a type
+      // annotation on the exported variable; this rule wants that annotation
+      // removed in favour of a constructor type argument.
+      "@typescript-eslint/consistent-generic-constructors": "off",
+
       // Type safety errors
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unsafe-assignment": "error",
@@ -141,6 +146,39 @@ export default [
           project,
         },
       },
+    },
+  },
+  // Executable entry points inside a library: these run in Node.js and are
+  // expected to use process, console and friends.
+  {
+    files: ["src/bin/**/*.ts", "src/cmd/**/*.ts", "src/cli.ts", "src/main.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2020,
+        sourceType: "module",
+        project,
+      },
+      globals: {
+        process: "readonly",
+        Buffer: "readonly",
+        console: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+        TextEncoder: "readonly",
+        TextDecoder: "readonly",
+      },
+    },
+    plugins: {
+      "@typescript-eslint": tsPlugin,
+    },
+    rules: {
+      ...tsPlugin.configs["recommended-type-checked"].rules,
+      "no-console": "off",
+      "no-restricted-globals": "off",
+      "no-restricted-syntax": "off",
+      "no-undef": "off",
+      "@typescript-eslint/no-non-null-assertion": "off",
     },
   },
   // Test file rules - relaxed for testing

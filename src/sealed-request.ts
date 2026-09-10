@@ -21,7 +21,11 @@ import {
   type EnvelopeEncodableValue,
   type ParameterID,
 } from "@blockchaincommons/envelope";
-import { SENDER, SENDER_CONTINUATION, RECIPIENT_CONTINUATION } from "@blockchaincommons/known-values";
+import {
+  SENDER,
+  SENDER_CONTINUATION,
+  RECIPIENT_CONTINUATION,
+} from "@blockchaincommons/known-values";
 import { XIDDocument } from "@blockchaincommons/xid";
 import { Continuation } from "./continuation";
 import { GstpError } from "./error";

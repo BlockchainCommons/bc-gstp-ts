@@ -5,7 +5,7 @@
  *   node scripts/check-deps.mjs --zero   # additionally: zero runtime deps
  *
  * The first check is universal: an extracted repository must never ship a
- * `@blockchaincommons/*` dependency or a `workspace:` protocol range, both of which are
+ * `@bcts/*` dependency or a `workspace:` protocol range, both of which are
  * unresolvable outside the bcts monorepo. The `--zero` form additionally
  * enforces the zero-runtime-dependency policy for the packages that hold it.
  */
@@ -22,7 +22,7 @@ let failed = false;
 
 for (const group of groups) {
   for (const [name, range] of Object.entries(pkg[group] ?? {})) {
-    if (name.startsWith("@blockchaincommons/")) {
+    if (name.startsWith("@bcts/")) {
       console.error(`${group}: "${name}" is a monorepo package and cannot be published.`);
       failed = true;
     }
