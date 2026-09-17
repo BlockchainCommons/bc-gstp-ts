@@ -34,7 +34,7 @@ const request = SealedRequest.from("getRecords", { id, sender: client, state: "p
   .withParameter("from", 100)
   .withParameter("to", 199)
   .withDate(now);
-const sealedRequest = request.seal({
+const sealedRequest = request.toEnvelope({
   signer: keysOf(client),
   recipients: [server],
   validUntil: inAMinute,
@@ -42,9 +42,9 @@ const sealedRequest = request.seal({
 console.log(format(sealedRequest));
 
 // The server opens it: the signature verifies, the client's continuation is present and encrypted.
-const opened = SealedRequest.open(sealedRequest, { recipient: keysOf(server), now });
-const from = opened.extractParameter("from", expectInteger);
-const to = opened.extractParameter("to", expectInteger);
+const opened = SealedRequest.fromEnvelope(sealedRequest, { recipient: keysOf(server), now });
+const from = opened.extractObjectForParameter("from", expectInteger);
+const to = opened.extractObjectForParameter("to", expectInteger);
 console.log("function:", opened.function.name, "from:", from, "to:", to);
 
 // The server answers, keeping its own state and handing the client's continuation back.
@@ -53,14 +53,14 @@ const response = SealedResponse.success(opened.id, {
   state: "next page from 200",
   peerContinuation: opened.peerContinuation,
 }).withResult(`records ${from}-${to}`);
-const sealedResponse = response.seal({
+const sealedResponse = response.toEnvelope({
   signer: keysOf(server),
   recipients: [client],
   validUntil: inAMinute,
 });
 
 // The client opens the response: its continuation must answer to the request id and be in date.
-const answer = SealedResponse.open(sealedResponse, {
+const answer = SealedResponse.fromEnvelope(sealedResponse, {
   recipient: keysOf(client),
   expectedId: id,
   now,
@@ -72,13 +72,13 @@ console.log("client state back:", answer.state?.expectString());
 const event = SealedEvent.from("records read", { id, sender: client, state: "audit 1" }).withDate(
   now,
 );
-const sealedEvent = event.seal({ signer: keysOf(client), recipients: [server] });
-const heard = SealedEvent.open(sealedEvent, { recipient: keysOf(server) });
+const sealedEvent = event.toEnvelope({ signer: keysOf(client), recipients: [server] });
+const heard = SealedEvent.fromEnvelope(sealedEvent, { recipient: keysOf(server) });
 console.log("event:", heard.content, "peer continuation:", heard.peerContinuation !== undefined);
 
 // A rejection: the response opened after the continuation's deadline.
 try {
-  SealedResponse.open(sealedResponse, {
+  SealedResponse.fromEnvelope(sealedResponse, {
     recipient: keysOf(client),
     expectedId: id,
     now: new Date(inAMinute.getTime() + 1),
@@ -89,7 +89,7 @@ try {
 }
 // And one wrapped from envelope: the wrong recipient's keys.
 try {
-  SealedRequest.open(sealedRequest, { recipient: keysOf(client) });
+  SealedRequest.fromEnvelope(sealedRequest, { recipient: keysOf(client) });
 } catch (e) {
   if (GstpError.isGstpError(e) && e.is("Envelope"))
     console.log("rejected:", e.code, e.details.inner, "-", e.message);

@@ -42,10 +42,10 @@
    "expect": "throw:TypeError"
   },
   {
-   "name": "domain open.now.cborDate (J4) (js-only J4)",
+   "name": "domain fromEnvelope.now.cborDate (J4) (js-only J4)",
    "recipe": {
     "k": "domain",
-    "case": "open.now.cborDate",
+    "case": "fromEnvelope.now.cborDate",
     "cls": "J4"
    },
    "expect": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc"

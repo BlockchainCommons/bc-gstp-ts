@@ -41,7 +41,7 @@ describe("Continuation", () => {
   describe("Request continuation", () => {
     it("should create and parse request continuation", () => {
       const continuation = requestContinuation();
-      const envelope = continuation.seal();
+      const envelope = continuation.toEnvelope();
 
       // The envelope shape, as the reference's test pins it.
       // `gstp-rust/tests/main_tests.rs::test_request_continuation`.
@@ -60,11 +60,11 @@ describe("Continuation", () => {
       );
 
       // Parse back the continuation
-      const parsedContinuation = Continuation.open(envelope, { expectedId: requestId() });
+      const parsedContinuation = Continuation.fromEnvelope(envelope, { expectedId: requestId() });
 
       expect(parsedContinuation.state.digest().equals(continuation.state.digest())).toBe(true);
-      const expectedId = continuation.validId;
-      const actualId = parsedContinuation.validId;
+      const expectedId = continuation.id;
+      const actualId = parsedContinuation.id;
       if (expectedId !== undefined && actualId !== undefined) {
         expect(actualId.equals(expectedId)).toBe(true);
       } else {
@@ -78,7 +78,7 @@ describe("Continuation", () => {
   describe("Response continuation", () => {
     it("should create and parse response continuation", () => {
       const continuation = responseContinuation();
-      const envelope = continuation.seal();
+      const envelope = continuation.toEnvelope();
 
       // The envelope shape, as the reference's test pins it.
       // `test_response_continuation`. The response continuation has
@@ -94,10 +94,10 @@ describe("Continuation", () => {
       );
 
       // Parse back the continuation
-      const parsedContinuation = Continuation.open(envelope, {});
+      const parsedContinuation = Continuation.fromEnvelope(envelope, {});
 
       expect(parsedContinuation.state.digest().equals(continuation.state.digest())).toBe(true);
-      expect(parsedContinuation.validId).toBeUndefined();
+      expect(parsedContinuation.id).toBeUndefined();
       expect(parsedContinuation.validUntil?.getTime()).toBe(continuation.validUntil?.getTime());
       expect(continuation.equals(parsedContinuation)).toBe(true);
     });
@@ -109,7 +109,7 @@ describe("Continuation", () => {
       const senderPublicKeys = senderPrivateKeys.publicKeys();
 
       const continuation = requestContinuation();
-      const envelope = continuation.seal(senderPublicKeys);
+      const envelope = continuation.toEnvelope(senderPublicKeys);
 
       // The envelope shape, as the reference's test pins it.
       // `test_encrypted_continuation`. Universal format (no
@@ -123,15 +123,15 @@ describe("Continuation", () => {
 
       // Parse with valid time (30 seconds after request date)
       const validNow = new Date(requestDate().getTime() + 30 * 1000);
-      const parsedContinuation = Continuation.open(envelope, {
+      const parsedContinuation = Continuation.fromEnvelope(envelope, {
         expectedId: requestId(),
         now: validNow,
         recipient: senderPrivateKeys,
       });
 
       expect(parsedContinuation.state.digest().equals(continuation.state.digest())).toBe(true);
-      const expectedId = continuation.validId;
-      const actualId = parsedContinuation.validId;
+      const expectedId = continuation.id;
+      const actualId = parsedContinuation.id;
       if (expectedId !== undefined && actualId !== undefined) {
         expect(actualId.equals(expectedId)).toBe(true);
       } else {
@@ -146,13 +146,13 @@ describe("Continuation", () => {
       const senderPublicKeys = senderPrivateKeys.publicKeys();
 
       const continuation = requestContinuation();
-      const envelope = continuation.seal(senderPublicKeys);
+      const envelope = continuation.toEnvelope(senderPublicKeys);
 
       // Parse with invalid time (90 seconds after request date - expired)
       const invalidNow = new Date(requestDate().getTime() + 90 * 1000);
 
       expect(() => {
-        Continuation.open(envelope, {
+        Continuation.fromEnvelope(envelope, {
           expectedId: requestId(),
           now: invalidNow,
           recipient: senderPrivateKeys,
@@ -165,14 +165,14 @@ describe("Continuation", () => {
       const senderPublicKeys = senderPrivateKeys.publicKeys();
 
       const continuation = requestContinuation();
-      const envelope = continuation.seal(senderPublicKeys);
+      const envelope = continuation.toEnvelope(senderPublicKeys);
 
       // Parse with valid time but invalid ID
       const validNow = new Date(requestDate().getTime() + 30 * 1000);
       const invalidId = ARID.random();
 
       expect(() => {
-        Continuation.open(envelope, {
+        Continuation.fromEnvelope(envelope, {
           expectedId: invalidId,
           now: validNow,
           recipient: senderPrivateKeys,
@@ -216,7 +216,7 @@ describe("SealedRequest", () => {
       state: serverState,
       validUntil: serverContinuationValidUntil,
     });
-    const serverContinuationEnvelope = serverContinuation.seal(serverPublicKeys);
+    const serverContinuationEnvelope = serverContinuation.toEnvelope(serverPublicKeys);
 
     // Client composes a request
     const clientContinuationValidUntil = new Date(now.getTime() + 60 * 1000);
@@ -230,7 +230,7 @@ describe("SealedRequest", () => {
 
     // The signed-but-not-encrypted envelope (no recipient, so the inner
     // shape is visible), as the reference's `test_sealed_request` pins it.
-    const signedClientRequestEnvelope = clientRequest.seal({
+    const signedClientRequestEnvelope = clientRequest.toEnvelope({
       validUntil: clientContinuationValidUntil,
       signer: clientPrivateKeys,
     });
@@ -263,22 +263,22 @@ describe("SealedRequest", () => {
     );
 
     // Create sealed envelope (signed by client, encrypted to server)
-    const sealedClientRequestEnvelope = clientRequest.seal({
+    const sealedClientRequestEnvelope = clientRequest.toEnvelope({
       validUntil: clientContinuationValidUntil,
       signer: clientPrivateKeys,
       recipients: [server],
     });
 
     // Server receives and parses the envelope
-    const parsedClientRequest = SealedRequest.open(sealedClientRequestEnvelope, {
+    const parsedClientRequest = SealedRequest.fromEnvelope(sealedClientRequestEnvelope, {
       recipient: serverPrivateKeys,
       now: now,
     });
 
     // Verify request contents
     expect(parsedClientRequest.function.id).toBe("test");
-    expect(parsedClientRequest.extractParameter("param1", expectInteger)).toBe(42);
-    expect(parsedClientRequest.extractParameter("param2", expectText)).toBe("hello");
+    expect(parsedClientRequest.extractObjectForParameter("param1", expectInteger)).toBe(42);
+    expect(parsedClientRequest.extractObjectForParameter("param2", expectText)).toBe("hello");
     expect(parsedClientRequest.note).toBe("This is a test");
     expect(parsedClientRequest.date?.getTime()).toBe(now.getTime());
 
@@ -300,7 +300,7 @@ describe("SealedRequest", () => {
     // The signed-but-not-encrypted server response, as the reference's
     // `test_sealed_request` pins it.
     const serverContinuationValidUntilNew = new Date(now.getTime() + 60 * 1000);
-    const signedServerResponseEnvelope = serverResponse.seal({
+    const signedServerResponseEnvelope = serverResponse.toEnvelope({
       validUntil: serverContinuationValidUntilNew,
       signer: serverPrivateKeys,
     });
@@ -328,14 +328,14 @@ describe("SealedRequest", () => {
     );
 
     // Create sealed response envelope (signed and encrypted to client)
-    const sealedServerResponseEnvelope = serverResponse.seal({
+    const sealedServerResponseEnvelope = serverResponse.toEnvelope({
       validUntil: serverContinuationValidUntilNew,
       signer: serverPrivateKeys,
       recipients: [client],
     });
 
     // Client receives and parses the response
-    const parsedServerResponse = SealedResponse.open(sealedServerResponseEnvelope, {
+    const parsedServerResponse = SealedResponse.fromEnvelope(sealedServerResponseEnvelope, {
       recipient: clientPrivateKeys,
       expectedId: parsedClientRequest.id,
       now: now,
@@ -381,7 +381,7 @@ describe("SealedRequest", () => {
       state: serverState,
       validUntil: new Date(now.getTime() + 60 * 1000),
     });
-    const serverContinuationEnvelope = serverContinuation.seal(serverPublicKeys);
+    const serverContinuationEnvelope = serverContinuation.toEnvelope(serverPublicKeys);
 
     // Client composes request
     const clientContinuationValidUntil = new Date(now.getTime() + 60 * 1000);
@@ -395,7 +395,7 @@ describe("SealedRequest", () => {
 
     // Create sealed envelope to multiple recipients
     const recipients = [server, auditor];
-    const sealedClientRequestEnvelope = clientRequest.seal({
+    const sealedClientRequestEnvelope = clientRequest.toEnvelope({
       validUntil: clientContinuationValidUntil,
       signer: clientPrivateKeys,
       recipients: recipients,
@@ -423,13 +423,13 @@ describe("SealedRequest", () => {
     }).not.toThrow();
 
     // Server parses the request
-    const parsedClientRequestServer = SealedRequest.open(sealedClientRequestEnvelope, {
+    const parsedClientRequestServer = SealedRequest.fromEnvelope(sealedClientRequestEnvelope, {
       recipient: serverPrivateKeys,
       now: now,
     });
 
-    expect(parsedClientRequestServer.extractParameter("param1", expectInteger)).toBe(42);
-    expect(parsedClientRequestServer.extractParameter("param2", expectText)).toBe("hello");
+    expect(parsedClientRequestServer.extractObjectForParameter("param1", expectInteger)).toBe(42);
+    expect(parsedClientRequestServer.extractObjectForParameter("param2", expectText)).toBe("hello");
 
     // Server creates response to multiple recipients
     const serverStateNew = new Expression(Function.named("nextPage"))
@@ -442,7 +442,7 @@ describe("SealedRequest", () => {
       .withPeerContinuation(peerContinuation);
 
     const responseRecipients = [client, auditor];
-    const sealedServerResponseEnvelope = serverResponse.seal({
+    const sealedServerResponseEnvelope = serverResponse.toEnvelope({
       validUntil: new Date(now.getTime() + 60 * 1000),
       signer: serverPrivateKeys,
       recipients: responseRecipients,
@@ -460,7 +460,7 @@ describe("SealedRequest", () => {
     );
 
     // Client parses the response
-    const parsedServerResponseClient = SealedResponse.open(sealedServerResponseEnvelope, {
+    const parsedServerResponseClient = SealedResponse.fromEnvelope(sealedServerResponseEnvelope, {
       recipient: clientPrivateKeys,
       expectedId: parsedClientRequestServer.id,
       now: now,
@@ -502,7 +502,7 @@ describe("SealedEvent", () => {
 
     // The signed-but-not-encrypted event, as the reference's
     // `test_sealed_event` pins it.
-    const signedEventEnvelope = event.seal({ signer: senderPrivateKeys });
+    const signedEventEnvelope = event.toEnvelope({ signer: senderPrivateKeys });
     expect(format(signedEventEnvelope)).toBe(
       [
         "{",
@@ -523,10 +523,13 @@ describe("SealedEvent", () => {
     );
 
     // Create sealed envelope (signed by sender, encrypted to recipient)
-    const sealedEventEnvelope = event.seal({ signer: senderPrivateKeys, recipients: [recipient] });
+    const sealedEventEnvelope = event.toEnvelope({
+      signer: senderPrivateKeys,
+      recipients: [recipient],
+    });
 
     // Recipient parses the event
-    const parsedEvent = SealedEvent.open(sealedEventEnvelope, {
+    const parsedEvent = SealedEvent.fromEnvelope(sealedEventEnvelope, {
       recipient: recipientPrivateKeys,
     });
 
@@ -566,7 +569,7 @@ describe("SealedEvent", () => {
       .withNote("Escrow update")
       .withState("state");
 
-    const sealedEventEnvelope = event.seal({
+    const sealedEventEnvelope = event.toEnvelope({
       validUntil: validUntil,
       signer: senderPrivateKeys,
       recipients: recipients,
@@ -584,13 +587,13 @@ describe("SealedEvent", () => {
     );
 
     // Both recipients can parse the event
-    const parsedEventA = SealedEvent.open<Envelope>(sealedEventEnvelope, {
+    const parsedEventA = SealedEvent.fromEnvelope<Envelope>(sealedEventEnvelope, {
       recipient: recipientAPrivateKeys,
       expectedId: requestId(),
       content: (env) => env,
     });
 
-    const parsedEventB = SealedEvent.open<Envelope>(sealedEventEnvelope, {
+    const parsedEventB = SealedEvent.fromEnvelope<Envelope>(sealedEventEnvelope, {
       recipient: recipientBPrivateKeys,
       expectedId: requestId(),
       content: (env) => env,

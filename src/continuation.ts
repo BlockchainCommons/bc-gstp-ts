@@ -34,8 +34,8 @@ export interface ContinuationInput {
   validId?: ARID | undefined;
   /** When it stops being valid: a `Date` to the millisecond, a `CborDate` exactly. */
   validUntil?: DateInput | undefined;
-  /** Alternatively, how long it stays valid from now, in milliseconds. */
-  validFor?: number | undefined;
+  /** Alternatively, how long it stays valid from now, in milliseconds (the reference's `Duration`). */
+  validDuration?: number | undefined;
 }
 
 /** What `isValid` checks against. */
@@ -46,8 +46,8 @@ export interface ContinuationCheck {
   id?: ARID | undefined;
 }
 
-/** What `Continuation.open` takes. */
-export interface OpenContinuationOptions {
+/** What `Continuation.fromEnvelope` takes. */
+export interface ContinuationFromEnvelopeOptions {
   /** The private keys that decrypt a sealed continuation. */
   recipient?: Decrypter | undefined;
   /** The clock the deadline is checked against; no check without one. */
@@ -77,17 +77,19 @@ export class Continuation implements ToEnvelope {
 
   /**
    * A continuation for `state`, bound to `validId` and to `validUntil` (or
-   * to now plus `validFor` milliseconds) when given. An id that is not an
-   * `ARID`, a date without a time or a duration that is not a finite
+   * to now plus `validDuration` milliseconds) when given. An id that is not
+   * an `ARID`, a date without a time or a duration that is not a finite
    * non-negative number is a `TypeError`.
    */
-  static from({ state, validId, validUntil, validFor }: ContinuationInput): Continuation {
+  static from({ state, validId, validUntil, validDuration }: ContinuationInput): Continuation {
     if (validId !== undefined) expectArid(validId, "validId");
     let deadline: CborDate | undefined;
     if (validUntil !== undefined) {
       deadline = toCborDate(expectDateInput(validUntil, "validUntil"));
-    } else if (validFor !== undefined) {
-      deadline = CborDate.fromDate(new Date(Date.now() + expectDuration(validFor, "validFor")));
+    } else if (validDuration !== undefined) {
+      deadline = CborDate.fromDate(
+        new Date(Date.now() + expectDuration(validDuration, "validDuration")),
+      );
     }
     return new Continuation(Envelope.from(state), validId, deadline);
   }
@@ -98,7 +100,7 @@ export class Continuation implements ToEnvelope {
   }
 
   /** The bound request id, when any. */
-  get validId(): ARID | undefined {
+  get id(): ARID | undefined {
     return this._validId;
   }
 
@@ -113,7 +115,7 @@ export class Continuation implements ToEnvelope {
   }
 
   /** Not expired at `now` (strictly before the deadline); always valid without a deadline or without a clock. */
-  isValidAt(now?: DateInput): boolean {
+  isValidDate(now?: DateInput): boolean {
     if (now !== undefined) expectDateInput(now, "now");
     if (this._validUntil === undefined || now === undefined) return true;
     return toCborDate(now).compare(this._validUntil) < 0;
@@ -126,24 +128,21 @@ export class Continuation implements ToEnvelope {
     return this._validId.equals(id);
   }
 
-  /** `isValidAt(now)` and `isValidId(id)`. */
+  /** `isValidDate(now)` and `isValidId(id)`. */
   isValid({ now, id }: ContinuationCheck = {}): boolean {
-    return this.isValidAt(now) && this.isValidId(id);
+    return this.isValidDate(now) && this.isValidId(id);
   }
 
-  /** The state wrapped, with `'id'` and `'validUntil'` assertions when set. */
-  toEnvelope(): Envelope {
+  /**
+   * The state wrapped, with `'id'` and `'validUntil'` assertions when set;
+   * encrypted to `recipient` (the party that will reopen it) when given.
+   */
+  toEnvelope(recipient?: Encrypter): Envelope {
     let envelope = this._state.wrap();
     if (this._validId !== undefined) envelope = envelope.addAssertion(ID, this._validId);
     if (this._validUntil !== undefined) {
       envelope = envelope.addAssertion(VALID_UNTIL, this._validUntil);
     }
-    return envelope;
-  }
-
-  /** `toEnvelope`, encrypted to `recipient` (the party that will open it) when given. */
-  seal(recipient?: Encrypter): Envelope {
-    const envelope = this.toEnvelope();
     return recipient === undefined
       ? envelope
       : guarded(() => encryptToRecipients(envelope, [recipient]));
@@ -158,9 +157,9 @@ export class Continuation implements ToEnvelope {
    * `ContinuationExpired` when `now` is past the deadline,
    * `ContinuationIdInvalid` when `expectedId` does not match the bound id.
    */
-  static open(
+  static fromEnvelope(
     sealed: Envelope,
-    { recipient, now, expectedId }: OpenContinuationOptions = {},
+    { recipient, now, expectedId }: ContinuationFromEnvelopeOptions = {},
   ): Continuation {
     expectEnvelope(sealed, "sealed");
     if (recipient !== undefined) expectDecrypter(recipient, "recipient");
@@ -176,15 +175,15 @@ export class Continuation implements ToEnvelope {
       envelope.optionalObjectForPredicateAs(VALID_UNTIL, (cbor) => CborDate.fromTaggedCbor(cbor)),
     );
     const continuation = new Continuation(state, validId, validUntil);
-    if (!continuation.isValidAt(now)) throw GstpError.continuationExpired();
+    if (!continuation.isValidDate(now)) throw GstpError.continuationExpired();
     if (!continuation.isValidId(expectedId)) throw GstpError.continuationIdInvalid();
     return continuation;
   }
 
-  /** Same state digest, id and deadline, as the reference's equality. */
+  /** Identical state (digest and structure), same id and deadline, as the reference's `PartialEq`. */
   equals(other: Continuation): boolean {
     expectInstance(other, Continuation, "other");
-    if (!this._state.digest().equals(other._state.digest())) return false;
+    if (!this._state.isIdenticalTo(other._state)) return false;
     if ((this._validId === undefined) !== (other._validId === undefined)) return false;
     if (
       this._validId !== undefined &&

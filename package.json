@@ -1,6 +1,6 @@
 {
   "name": "@blockchaincommons/gstp",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.2",
   "type": "module",
   "sideEffects": false,
   "description": "Gordian Sealed Transaction Protocol - A secure, authenticated, transport-agnostic data exchange protocol with distributed state management via Encrypted State Continuations (ESC)",
@@ -92,6 +92,7 @@
     "@typescript-eslint/eslint-plugin": "^8.70.0",
     "@typescript-eslint/parser": "^8.70.0",
     "@vitest/coverage-v8": "^5.0.1",
+    "ajv": "^8.20.0",
     "eslint": "^10.10.0",
     "fast-check": "^4.10.1",
     "prettier": "3.9.7",

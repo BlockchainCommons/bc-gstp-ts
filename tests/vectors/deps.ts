@@ -25,10 +25,20 @@ import {
   expectText,
 } from "@blockchaincommons/dcbor";
 import { Envelope } from "@blockchaincommons/envelope";
-import { Expression, Function } from "@blockchaincommons/envelope/expression";
+import {
+  Event,
+  Expression,
+  Function,
+  Request,
+  Response,
+} from "@blockchaincommons/envelope/expression";
 import { format, registerTags } from "@blockchaincommons/envelope/format";
-import { encryptToRecipients } from "@blockchaincommons/envelope/recipient";
-import { ID, VALID_UNTIL } from "@blockchaincommons/known-values";
+import {
+  encryptSubjectToRecipients,
+  encryptToRecipients,
+} from "@blockchaincommons/envelope/recipient";
+import { sign } from "@blockchaincommons/envelope/signature";
+import { ID, SENDER, SENDER_CONTINUATION, VALID_UNTIL } from "@blockchaincommons/known-values";
 import { XIDDocument } from "@blockchaincommons/xid";
 import {
   type Decoder,
@@ -69,6 +79,21 @@ export interface SiblingDeps {
   ): any;
   /** The named decoder over a parameter's leaf, rendering the value. */
   decoder?(name: Decoder): (cbor: any) => string;
+  /**
+   * A message assembled by hand: the minimal body of `kind` with `id`, one
+   * `'sender'` assertion per entry of `senders` (the document, or a text
+   * leaf), a plain `'senderContinuation'` when asked, signed by `signer`
+   * when given, wrapped and encrypted to `recipientKeys`.
+   */
+  handBuiltEnvelope?(
+    kind: "request" | "response" | "event",
+    id: any,
+    sender: any,
+    senders: readonly ("document" | "text")[],
+    plainSenderContinuation: boolean,
+    signer: any | undefined,
+    recipientKeys: any[],
+  ): any;
 }
 
 export async function baselineModule(): Promise<any> {
@@ -149,6 +174,28 @@ export const currentDeps: SiblingDeps = {
     for (const object of id ?? []) envelope = envelope.addAssertion(ID, object);
     if (until !== undefined) envelope = envelope.addAssertion(VALID_UNTIL, until);
     return encryptTo === undefined ? envelope : encryptToRecipients(envelope, [encryptTo]);
+  },
+  handBuiltEnvelope: (
+    kind,
+    id,
+    sender,
+    senders,
+    plainSenderContinuation,
+    signer,
+    recipientKeys,
+  ) => {
+    let body: Envelope =
+      kind === "request"
+        ? Request.from("f", id).toEnvelope()
+        : kind === "response"
+          ? Response.success(id).toEnvelope()
+          : Event.from("x", id).toEnvelope();
+    for (const object of senders) {
+      body = body.addAssertion(SENDER, object === "document" ? sender.toEnvelope() : "nope");
+    }
+    if (plainSenderContinuation) body = body.addAssertion(SENDER_CONTINUATION, "state");
+    if (signer !== undefined) body = sign(body, signer);
+    return encryptSubjectToRecipients(body.wrap(), recipientKeys);
   },
   decoder: (name) => {
     switch (name) {
@@ -308,6 +355,9 @@ export function baselineAdapterFor(m: any, d: SiblingDeps): VectorApi {
       }));
       return { signed, sealed: d.format(sealedEnv), opens };
     },
+    sealedEnvelope: (r) => {
+      throw new Error(`the frozen bundle does not run hand-built rows (${r.as})`);
+    },
     domain: (name) => {
       throw new Error(`the frozen bundle does not run domain rows (${name})`);
     },
@@ -323,12 +373,12 @@ export function baselineAdapterFor(m: any, d: SiblingDeps): VectorApi {
 /**
  * The working tree's surface: `SealedRequest.from(func, { id, sender, state,
  * peerContinuation })`, `SealedResponse.success/failure/earlyFailure(id, { sender })`,
- * `SealedEvent.from(content, { id, sender })`, getters, `seal({ signer,
- * recipients, validUntil })`, `open(envelope, { recipient, expectedId, now })`,
- * `Continuation.from({ state, validId, validUntil })`, `seal(recipient)`,
- * `open(envelope, { recipient, now, id })`. A `GstpError` renders as
- * `throw:<code>[<inner code>]|<message>`, the inner code being the wrapped
- * envelope or xid error's.
+ * `SealedEvent.from(content, { id, sender })`, getters, `toEnvelope({ signer,
+ * recipients, validUntil })`, `fromEnvelope(envelope, { recipient, expectedId,
+ * now })`, `Continuation.from({ state, validId, validUntil })`,
+ * `toEnvelope(recipient)`, `fromEnvelope(envelope, { recipient, now,
+ * expectedId })`. A `GstpError` renders as `throw:<code>[<inner code>]|<message>`,
+ * the inner code being the wrapped envelope or xid error's.
  */
 export function currentAdapterFor(m: any, d: SiblingDeps): VectorApi {
   const docs = new Map<string, any>();
@@ -365,7 +415,7 @@ export function currentAdapterFor(m: any, d: SiblingDeps): VectorApi {
       state: value(r.peer.state),
       validUntil: date(r.peer.validUntil),
     });
-    return c.seal(
+    return c.toEnvelope(
       r.peer.encrypt === false ? undefined : d.encryptionKeyOf(docOf(r.peer.from, r.keys === "pq")),
     );
   };
@@ -398,7 +448,7 @@ export function currentAdapterFor(m: any, d: SiblingDeps): VectorApi {
     return x;
   };
   const extracted = (p: any, k: string, decoder: Decoder): string =>
-    attempt(api, () => String(p.extractParameter(k, d.decoder?.(decoder))));
+    attempt(api, () => String(p.extractObjectForParameter(k, d.decoder?.(decoder))));
   const openedOf = (r: Extract<Recipe, { sender: string }>, p: any): Opened => {
     const base: Opened = {
       summary: p.toString(),
@@ -444,17 +494,57 @@ export function currentAdapterFor(m: any, d: SiblingDeps): VectorApi {
               : shaped(r.untilShape, d.cborDate(r.validUntil), "not a date"),
             recipient,
           )
-        : c.seal(recipient);
+        : c.toEnvelope(recipient);
       const opened = attempt(api, () => {
-        const back = m.Continuation.open(env, {
+        const back = m.Continuation.fromEnvelope(env, {
           expectedId: arid(open.expectedId),
           now: date(open.now),
           recipient:
             open.recipient === undefined ? undefined : d.privateKeysOf(docOf(open.recipient)),
         });
-        return `state=${flat(back.state)}; id=${back.validId?.toHex() ?? "-"}; validUntil=${back.validUntil?.toISOString() ?? "-"}; equals=${c.equals(back)}`;
+        const elided =
+          r.elided === true
+            ? `; elidedEquals=${c.equals(
+                m.Continuation.from({
+                  state: d.envelopeFrom(value(r.state)).elide(),
+                  validId: arid(r.id),
+                  validUntil: date(r.validUntil),
+                }),
+              )}`
+            : "";
+        return `state=${flat(back.state)}; id=${back.id?.toHex() ?? "-"}; validUntil=${back.validUntil?.toISOString() ?? "-"}; equals=${c.equals(back)}${elided}`;
       });
       return { format: d.format(env), opened };
+    },
+    sealedEnvelope: (r) => {
+      const by = docOf(r.by);
+      const sealedEnv = d.handBuiltEnvelope?.(
+        r.as,
+        d.arid(r.id),
+        by,
+        r.senders,
+        r.plainSenderContinuation === true,
+        r.sign === false ? undefined : d.privateKeysOf(by),
+        r.recipients.map((seed) => d.encryptionKeyOf(docOf(seed))),
+      );
+      const opens = r.open.map((o) => ({
+        by: o.recipient.slice(0, 8),
+        outcome: attempt(api, () => {
+          const options = {
+            recipient: d.privateKeysOf(docOf(o.recipient)),
+            expectedId: arid(o.expectedId),
+            now: date(o.now),
+          };
+          const p =
+            r.as === "request"
+              ? m.SealedRequest.fromEnvelope(sealedEnv, options)
+              : r.as === "response"
+                ? m.SealedResponse.fromEnvelope(sealedEnv, options)
+                : m.SealedEvent.fromEnvelope(sealedEnv, { ...options, content: (env: any) => env });
+          return `summary=${p.toString()}; id=${p.id === undefined ? "-" : p.id.toHex()}; sender=${d.xidHex(p.sender).slice(0, 8)}; state=${flat(p.state)}; peer=${flat(p.peerContinuation)}`;
+        }),
+      }));
+      return { sealed: d.format(sealedEnv), opens };
     },
     sealed: (r) => {
       const pq = r.keys === "pq";
@@ -462,9 +552,9 @@ export function currentAdapterFor(m: any, d: SiblingDeps): VectorApi {
       const sender = docOf(r.sender, pq);
       const signer = r.sign === false ? undefined : d.privateKeysOf(sender);
       const validUntil = date(r.validUntil);
-      const signed = d.format(x.seal({ signer, validUntil }));
+      const signed = d.format(x.toEnvelope({ signer, validUntil }));
       const recipients = (r.recipients ?? []).map((s) => docOf(s, pq));
-      const sealedEnv = x.seal({ signer, validUntil, recipients });
+      const sealedEnv = x.toEnvelope({ signer, validUntil, recipients });
       const opens = opensOf(r).map((o) => ({
         by: o.recipient.slice(0, 8),
         outcome: attempt(api, () => {
@@ -475,10 +565,10 @@ export function currentAdapterFor(m: any, d: SiblingDeps): VectorApi {
           };
           const p =
             r.k === "request"
-              ? m.SealedRequest.open(sealedEnv, options)
+              ? m.SealedRequest.fromEnvelope(sealedEnv, options)
               : r.k === "response"
-                ? m.SealedResponse.open(sealedEnv, options)
-                : m.SealedEvent.open(sealedEnv, { ...options, content: (env: any) => env });
+                ? m.SealedResponse.fromEnvelope(sealedEnv, options)
+                : m.SealedEvent.fromEnvelope(sealedEnv, { ...options, content: (env: any) => env });
           return renderOpened(openedOf(r, p));
         }),
       }));
@@ -490,34 +580,34 @@ export function currentAdapterFor(m: any, d: SiblingDeps): VectorApi {
       const id = d.arid("c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc");
       const request = (): any => m.SealedRequest.from("f", { id, sender });
       const sealedToServer = (): any =>
-        request().seal({ signer: d.privateKeysOf(sender), recipients: [server] });
+        request().toEnvelope({ signer: d.privateKeysOf(sender), recipients: [server] });
       switch (name) {
         case "continuation.validUntil.nan":
           return String(m.Continuation.from({ state: "s", validUntil: new Date(NaN) }));
-        case "continuation.validFor.nan":
-          return String(m.Continuation.from({ state: "s", validFor: NaN }));
+        case "continuation.validDuration.nan":
+          return String(m.Continuation.from({ state: "s", validDuration: NaN }));
         case "request.id.string":
-          return d.format(m.SealedRequest.from("f", { id: "nope", sender }).seal());
+          return d.format(m.SealedRequest.from("f", { id: "nope", sender }).toEnvelope());
         case "request.withDate.nan":
           return String(request().withDate(new Date(NaN)));
-        case "open.noRecipient":
-          return String(m.SealedRequest.open(sealedToServer(), {}));
-        case "event.open.noContent": {
-          const sealedEvent = m.SealedEvent.from("text", { id, sender }).seal({
+        case "fromEnvelope.noRecipient":
+          return String(m.SealedRequest.fromEnvelope(sealedToServer(), {}));
+        case "event.fromEnvelope.noContent": {
+          const sealedEvent = m.SealedEvent.from("text", { id, sender }).toEnvelope({
             signer: d.privateKeysOf(sender),
             recipients: [server],
           });
-          const content: unknown = m.SealedEvent.open(sealedEvent, {
+          const content: unknown = m.SealedEvent.fromEnvelope(sealedEvent, {
             recipient: d.privateKeysOf(server),
           }).content;
           return `${typeof content}:${String(content)}`;
         }
-        case "seal.validUntil.cborDate":
+        case "toEnvelope.validUntil.cborDate":
           return d
-            .format(request().seal({ validUntil: d.cborDate("2030-01-01T00:00:00Z") }))
+            .format(request().toEnvelope({ validUntil: d.cborDate("2030-01-01T00:00:00Z") }))
             .split("\n")[0];
-        case "open.now.cborDate":
-          return m.SealedRequest.open(sealedToServer(), {
+        case "fromEnvelope.now.cborDate":
+          return m.SealedRequest.fromEnvelope(sealedToServer(), {
             recipient: d.privateKeysOf(server),
             now: d.cborDate("2024-07-04T11:11:11Z"),
           }).id.toHex();

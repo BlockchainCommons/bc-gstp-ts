@@ -9,6 +9,7 @@ import fc from "fast-check";
 import { ARID, PrivateKeyBase } from "@blockchaincommons/components";
 import { CborDate } from "@blockchaincommons/dcbor";
 import { Envelope } from "@blockchaincommons/envelope";
+import { format } from "@blockchaincommons/envelope/format";
 import { XIDDocument } from "@blockchaincommons/xid";
 import { Continuation, SealedEvent, SealedRequest, SealedResponse } from "../src";
 
@@ -29,7 +30,7 @@ const now = new Date("2024-07-04T11:11:11Z");
 const later = new Date("2030-01-01T00:00:00Z");
 const request = (): SealedRequest => SealedRequest.from("f", { id, sender: client });
 const sealed = (): Envelope =>
-  request().seal({ signer: must(client.inceptionPrivateKeys), recipients: [server] });
+  request().toEnvelope({ signer: must(client.inceptionPrivateKeys), recipients: [server] });
 
 /** Every guarded call, with the argument its message names. */
 const GUARDS: [string, (bogus: unknown) => unknown, string][] = [
@@ -43,23 +44,27 @@ const GUARDS: [string, (bogus: unknown) => unknown, string][] = [
     (b) => Continuation.from({ state: "s", validUntil: b as never }),
     "validUntil",
   ],
-  ["Continuation.open sealed", (b) => Continuation.open(b as never), "sealed"],
+  ["Continuation.open sealed", (b) => Continuation.fromEnvelope(b as never), "sealed"],
   [
     "Continuation.open recipient",
-    (b) => Continuation.open(Envelope.from("s").wrap(), { recipient: b as never }),
+    (b) => Continuation.fromEnvelope(Envelope.from("s").wrap(), { recipient: b as never }),
     "recipient",
   ],
   [
     "Continuation.open now",
-    (b) => Continuation.open(Envelope.from("s").wrap(), { now: b as never }),
+    (b) => Continuation.fromEnvelope(Envelope.from("s").wrap(), { now: b as never }),
     "now",
   ],
   [
     "Continuation.open expectedId",
-    (b) => Continuation.open(Envelope.from("s").wrap(), { expectedId: b as never }),
+    (b) => Continuation.fromEnvelope(Envelope.from("s").wrap(), { expectedId: b as never }),
     "expectedId",
   ],
-  ["Continuation.isValidAt", (b) => Continuation.from({ state: "s" }).isValidAt(b as never), "now"],
+  [
+    "Continuation.isValidDate",
+    (b) => Continuation.from({ state: "s" }).isValidDate(b as never),
+    "now",
+  ],
   ["Continuation.isValidId", (b) => Continuation.from({ state: "s" }).isValidId(b as never), "id"],
   ["Continuation.equals", (b) => Continuation.from({ state: "s" }).equals(b as never), "other"],
   [
@@ -85,28 +90,28 @@ const GUARDS: [string, (bogus: unknown) => unknown, string][] = [
   ],
   [
     "SealedRequest.seal validUntil",
-    (b) => request().seal({ validUntil: b as never }),
+    (b) => request().toEnvelope({ validUntil: b as never }),
     "validUntil",
   ],
   [
     "SealedRequest.seal recipients[]",
-    (b) => request().seal({ recipients: [b as never] }),
+    (b) => request().toEnvelope({ recipients: [b as never] }),
     "recipients[]",
   ],
   [
     "SealedRequest.open sealed",
-    (b) => SealedRequest.open(b as never, { recipient: must(server.inceptionPrivateKeys) }),
+    (b) => SealedRequest.fromEnvelope(b as never, { recipient: must(server.inceptionPrivateKeys) }),
     "sealed",
   ],
   [
     "SealedRequest.open recipient",
-    (b) => SealedRequest.open(sealed(), { recipient: b as never }),
+    (b) => SealedRequest.fromEnvelope(sealed(), { recipient: b as never }),
     "recipient",
   ],
   [
     "SealedRequest.open expectedId",
     (b) =>
-      SealedRequest.open(sealed(), {
+      SealedRequest.fromEnvelope(sealed(), {
         recipient: must(server.inceptionPrivateKeys),
         expectedId: b as never,
       }),
@@ -115,7 +120,7 @@ const GUARDS: [string, (bogus: unknown) => unknown, string][] = [
   [
     "SealedRequest.open now",
     (b) =>
-      SealedRequest.open(sealed(), {
+      SealedRequest.fromEnvelope(sealed(), {
         recipient: must(server.inceptionPrivateKeys),
         now: b as never,
       }),
@@ -178,11 +183,11 @@ describe("the JavaScript boundary", () => {
 
   it("rejects a duration that is not a finite, non-negative number", () => {
     for (const bogus of [NaN, Infinity, -1, "60000", {}, null]) {
-      expect(() => Continuation.from({ state: "s", validFor: bogus as never })).toThrow(
-        "validFor must be a finite, non-negative number of milliseconds",
+      expect(() => Continuation.from({ state: "s", validDuration: bogus as never })).toThrow(
+        "validDuration must be a finite, non-negative number of milliseconds",
       );
     }
-    expect(Continuation.from({ state: "s", validFor: 0 }).validUntil).toBeInstanceOf(Date);
+    expect(Continuation.from({ state: "s", validDuration: 0 }).validUntil).toBeInstanceOf(Date);
   });
 
   it("rejects any non-instance value with a TypeError (property; undefined is an absent option)", () => {
@@ -209,16 +214,16 @@ describe("the JavaScript boundary", () => {
   it("takes a CborDate wherever a Date goes", () => {
     const deadline = CborDate.fromDate(later);
     const c = Continuation.from({ state: "s", validUntil: deadline });
-    expect(c.isValidAt(CborDate.fromDate(now))).toBe(true);
-    expect(c.isValidAt(deadline)).toBe(false);
+    expect(c.isValidDate(CborDate.fromDate(now))).toBe(true);
+    expect(c.isValidDate(deadline)).toBe(false);
     const withCbor = request().withDate(CborDate.fromDate(now));
     expect(withCbor.date?.getTime()).toBe(now.getTime());
-    const env = request().seal({
+    const env = request().toEnvelope({
       signer: must(client.inceptionPrivateKeys),
       recipients: [server],
       validUntil: deadline,
     });
-    const opened = SealedRequest.open(env, {
+    const opened = SealedRequest.fromEnvelope(env, {
       recipient: must(server.inceptionPrivateKeys),
       now: CborDate.fromDate(now),
     });
@@ -250,20 +255,69 @@ describe("the JavaScript boundary", () => {
     expect(e.note).toBe("");
   });
 
+  it("gives the success pair and the failure pair", () => {
+    const success = SealedResponse.success(id, { sender: client }).withResult("r");
+    expect(success.ok?.id.equals(id)).toBe(true);
+    expect(success.ok?.result.expectString()).toBe("r");
+    expect(success.err).toBeUndefined();
+    const failure = SealedResponse.failure(id, { sender: client }).withError("e");
+    expect(failure.ok).toBeUndefined();
+    expect(failure.err?.id?.equals(id)).toBe(true);
+    expect(failure.err?.error.expectString()).toBe("e");
+    const early = SealedResponse.earlyFailure({ sender: client });
+    expect(early.err?.id).toBeUndefined();
+    expect(early.err?.error.isKnownValue()).toBe(true);
+  });
+
   it("reads an event's content as text unless told how", () => {
-    const env = SealedEvent.from("text", { id, sender: client }).seal({
+    const env = SealedEvent.from("text", { id, sender: client }).toEnvelope({
       signer: must(client.inceptionPrivateKeys),
       recipients: [server],
     });
-    const asText: SealedEvent<string> = SealedEvent.open(env, {
+    const asText: SealedEvent<string> = SealedEvent.fromEnvelope(env, {
       recipient: must(server.inceptionPrivateKeys),
     });
     expect(asText.content).toBe("text");
-    const asEnvelope: SealedEvent<Envelope> = SealedEvent.open(env, {
+    const asEnvelope: SealedEvent<Envelope> = SealedEvent.fromEnvelope(env, {
       recipient: must(server.inceptionPrivateKeys),
       content: (e: Envelope) => e,
     });
     expect(asEnvelope.content.expectString()).toBe("text");
+  });
+
+  it("copies the sender document at construction", () => {
+    const sender = docOf(4);
+    const request = SealedRequest.from("f", { id, sender });
+    const response = SealedResponse.success(id, { sender });
+    const event = SealedEvent.from("e", { id, sender });
+    sender.addResolutionMethod("https://resolver.example.com");
+    for (const message of [request, response, event]) {
+      expect(message.sender).not.toBe(sender);
+      expect(message.sender.equals(sender)).toBe(false);
+      expect(format(message.toEnvelope())).not.toContain("resolver.example.com");
+    }
+  });
+
+  it("compares states and continuations structurally, as the reference's PartialEq", () => {
+    const state = Envelope.from("s").addAssertion("a", 1);
+    const elided = state.elide();
+    expect(state.isEquivalentTo(elided)).toBe(true);
+    const c = Continuation.from({ state, validId: id });
+    expect(c.equals(Continuation.from({ state, validId: id }))).toBe(true);
+    expect(c.equals(Continuation.from({ state: elided, validId: id }))).toBe(false);
+    const r = SealedRequest.from("f", { id, sender: client, state });
+    expect(r.equals(r.withState(state))).toBe(true);
+    expect(r.equals(r.withState(elided))).toBe(false);
+    expect(
+      SealedResponse.success(id, { sender: client, state }).equals(
+        SealedResponse.success(id, { sender: client, state: elided }),
+      ),
+    ).toBe(false);
+    expect(
+      SealedEvent.from("e", { id, sender: client, peerContinuation: state }).equals(
+        SealedEvent.from("e", { id, sender: client, peerContinuation: elided }),
+      ),
+    ).toBe(false);
   });
 
   it("compares the whole sender document", () => {

@@ -149,8 +149,8 @@ interface ContinuationInput {
   validId?: ARID | undefined;
   /** When it stops being valid: a `Date` to the millisecond, a `CborDate` exactly. */
   validUntil?: DateInput | undefined;
-  /** Alternatively, how long it stays valid from now, in milliseconds. */
-  validFor?: number | undefined;
+  /** Alternatively, how long it stays valid from now, in milliseconds (the reference's `Duration`). */
+  validDuration?: number | undefined;
 }
 /** What `isValid` checks against. */
 interface ContinuationCheck {
@@ -159,8 +159,8 @@ interface ContinuationCheck {
   /** The request id; no id check without one. */
   id?: ARID | undefined;
 }
-/** What `Continuation.open` takes. */
-interface OpenContinuationOptions {
+/** What `Continuation.fromEnvelope` takes. */
+interface ContinuationFromEnvelopeOptions {
   /** The private keys that decrypt a sealed continuation. */
   recipient?: Decrypter | undefined;
   /** The clock the deadline is checked against; no check without one. */
@@ -176,29 +176,30 @@ export declare class Continuation implements ToEnvelope {
   private constructor();
   /**
    * A continuation for `state`, bound to `validId` and to `validUntil` (or
-   * to now plus `validFor` milliseconds) when given. An id that is not an
-   * `ARID`, a date without a time or a duration that is not a finite
+   * to now plus `validDuration` milliseconds) when given. An id that is not
+   * an `ARID`, a date without a time or a duration that is not a finite
    * non-negative number is a `TypeError`.
    */
-  static from({ state, validId, validUntil, validFor }: ContinuationInput): Continuation;
+  static from({ state, validId, validUntil, validDuration }: ContinuationInput): Continuation;
   /** The state. */
   get state(): Envelope;
   /** The bound request id, when any. */
-  get validId(): ARID | undefined;
+  get id(): ARID | undefined;
   /** The deadline as a JS `Date` (millisecond view); `cborValidUntil` is the exact value. */
   get validUntil(): Date | undefined;
   /** The deadline exactly, when any. */
   get cborValidUntil(): CborDate | undefined;
   /** Not expired at `now` (strictly before the deadline); always valid without a deadline or without a clock. */
-  isValidAt(now?: DateInput): boolean;
+  isValidDate(now?: DateInput): boolean;
   /** Bound to `id`; always valid without a bound id or without an id to check. */
   isValidId(id?: ARID): boolean;
-  /** `isValidAt(now)` and `isValidId(id)`. */
+  /** `isValidDate(now)` and `isValidId(id)`. */
   isValid({ now, id }?: ContinuationCheck): boolean;
-  /** The state wrapped, with `'id'` and `'validUntil'` assertions when set. */
-  toEnvelope(): Envelope;
-  /** `toEnvelope`, encrypted to `recipient` (the party that will open it) when given. */
-  seal(recipient?: Encrypter): Envelope;
+  /**
+   * The state wrapped, with `'id'` and `'validUntil'` assertions when set;
+   * encrypted to `recipient` (the party that will reopen it) when given.
+   */
+  toEnvelope(recipient?: Encrypter): Envelope;
   /**
    * Decrypts (with `recipient`), reads the state, id and deadline (the
    * `'id'` and `'validUntil'` objects' subjects, as the reference's
@@ -208,16 +209,16 @@ export declare class Continuation implements ToEnvelope {
    * `ContinuationExpired` when `now` is past the deadline,
    * `ContinuationIdInvalid` when `expectedId` does not match the bound id.
    */
-  static open(sealed: Envelope, { recipient, now, expectedId }?: OpenContinuationOptions): Continuation;
-  /** Same state digest, id and deadline, as the reference's equality. */
+  static fromEnvelope(sealed: Envelope, { recipient, now, expectedId }?: ContinuationFromEnvelopeOptions): Continuation;
+  /** Identical state (digest and structure), same id and deadline, as the reference's `PartialEq`. */
   equals(other: Continuation): boolean;
   /** `Continuation(state: …, id: …, validUntil: …)`; a JavaScript addition (the reference derives `Debug` only). */
   toString(): string;
 }
 //#endregion
 //#region src/sealing.d.ts
-/** What `seal` takes on a sealed request, response or event. */
-interface SealOptions {
+/** What `toEnvelope` takes on a sealed request, response or event. */
+interface ToEnvelopeOptions {
   /** Signs the message; the sender's private keys, typically. */
   signer?: Signer | undefined;
   /** Encrypts the signed message to each recipient's encryption key. */
@@ -225,8 +226,8 @@ interface SealOptions {
   /** The deadline of the sender's own continuation. */
   validUntil?: DateInput | undefined;
 }
-/** What `open` takes on a sealed request, response or event. */
-interface OpenOptions {
+/** What `fromEnvelope` takes on a sealed request, response or event. */
+interface FromEnvelopeOptions {
   /** The private keys of the recipient opening the message. */
   recipient: Decrypter;
   /** The request id the recipient's continuation must answer to. */
@@ -240,7 +241,7 @@ interface OpenOptions {
 interface SealedRequestInput {
   /** The request id. */
   id: ARID;
-  /** The sender's document; its encryption key seals the sender's state, its signing key signs. */
+  /** The sender's document, copied at construction; its encryption key seals the sender's state, its signing key signs. */
   sender: XIDDocument;
   /** The sender's own state, returned in the reply. */
   state?: EnvelopeInput | undefined;
@@ -289,7 +290,7 @@ export declare class SealedRequest implements ToEnvelope {
   /** The single `param` argument; `Envelope[NonexistentPredicate]` when absent, `Envelope[AmbiguousPredicate]` when repeated. */
   objectForParameter(param: ParameterID | Parameter): Envelope;
   /** Every `param` argument. */
-  parameters(param: ParameterID | Parameter): Envelope[];
+  objectsForParameter(param: ParameterID | Parameter): Envelope[];
   /**
    * The single `param` argument's leaf, decoded by `decoder` (dcbor's
    * `expectText`, `expectInteger`, …, `CborDate.fromTaggedCbor`,
@@ -299,11 +300,11 @@ export declare class SealedRequest implements ToEnvelope {
    * `Envelope[NotLeaf]` when the argument is not a leaf, `Envelope[Cbor]`
    * when the decoder rejects it.
    */
-  extractParameter<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T;
-  /** `extractParameter`, or `undefined` when the parameter is absent. */
-  extractOptionalParameter<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T | undefined;
+  extractObjectForParameter<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T;
+  /** `extractObjectForParameter`, or `undefined` when the parameter is absent. */
+  extractOptionalObjectForParameter<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T | undefined;
   /** Every `param` argument's leaf, decoded. */
-  extractParameters<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T[];
+  extractObjectsForParameter<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T[];
   /** With the sender's state (`undefined` clears it). */
   withState(state: EnvelopeInput | undefined): SealedRequest;
   /** With the peer's continuation (`undefined` clears it); not an `Envelope` is a `TypeError`. */
@@ -318,32 +319,45 @@ export declare class SealedRequest implements ToEnvelope {
    * The request with `'sender'`, the sender's continuation (the state —
    * `null` without one — bound to the request id and `validUntil`,
    * encrypted to the sender) and the peer continuation; signed by
-   * `signer` and encrypted to `recipients` when given.
+   * `signer` and encrypted to `recipients` when given. With no options:
+   * unsigned, unsealed.
    */
-  seal({ signer, recipients, validUntil }?: SealOptions): Envelope;
-  /** `seal` with nothing: unsigned, unsealed. */
-  toEnvelope(): Envelope;
+  toEnvelope({ signer, recipients, validUntil }?: ToEnvelopeOptions): Envelope;
   /**
    * Decrypts to the recipient, verifies the sender's signature, requires
    * an encrypted sender continuation, opens the recipient's own
    * continuation (`expectedId`, `now`) and parses the request.
    */
-  static open(sealed: Envelope, options: OpenOptions): SealedRequest;
+  static fromEnvelope(sealed: Envelope, options: FromEnvelopeOptions): SealedRequest;
   /** `SealedRequest(<summary>, state: <flat>, peer_continuation: None|Some)`, the reference's `Display`. */
   toString(): string;
-  /** Same request, sender document, state digest and peer continuation digest, as the reference's equality. */
+  /** Same request and sender document, identical state and peer continuation (digest and structure), as the reference's `PartialEq`. */
   equals(other: SealedRequest): boolean;
 }
 //#endregion
 //#region src/sealed-response.d.ts
 /** What the response constructors take besides the id. */
 interface SealedResponseInput {
-  /** The sender's document; its encryption key seals the sender's state, its signing key signs. */
+  /** The sender's document, copied at construction; its encryption key seals the sender's state, its signing key signs. */
   sender: XIDDocument;
   /** The sender's own state, returned in the reply; a response that is not a success carries none. */
   state?: EnvelopeInput | undefined;
   /** The peer's continuation, as received, handed back. */
   peerContinuation?: Envelope | undefined;
+}
+/** What `ok` gives on a success: the reference's `(ARID, Envelope)` pair. */
+interface ResponseOk {
+  /** The request id. */
+  readonly id: ARID;
+  /** The `'result'`. */
+  readonly result: Envelope;
+}
+/** What `err` gives on a failure: the reference's `(Option<ARID>, Envelope)` pair. */
+interface ResponseErr {
+  /** The request id; `undefined` on an early failure. */
+  readonly id: ARID | undefined;
+  /** The `'error'`. */
+  readonly error: Envelope;
 }
 /** A response with its sender, state and the peer's continuation. */
 export declare class SealedResponse implements ToEnvelope {
@@ -360,9 +374,17 @@ export declare class SealedResponse implements ToEnvelope {
   /** A failure before the request id was known; `StateOnFailedResponse` with a state. */
   static earlyFailure(input: SealedResponseInput): SealedResponse;
   private with;
-  /** With a `'result'` (`undefined` leaves the response unchanged). */
+  /**
+   * With a `'result'`; `undefined` sets a `null` result, as the reference's
+   * `with_optional_result(None)`. `Envelope[General]` on a response that is
+   * not a success, where the reference panics.
+   */
   withResult(result: EnvelopeInput | undefined): SealedResponse;
-  /** With an `'error'` (`undefined` leaves the response unchanged). */
+  /**
+   * With an `'error'`; `undefined` leaves the response unchanged, as the
+   * reference's `with_optional_error(None)`. `Envelope[General]` on a
+   * success, where the reference panics.
+   */
   withError(error: EnvelopeInput | undefined): SealedResponse;
   /** The envelope response. */
   get response(): Response;
@@ -370,6 +392,10 @@ export declare class SealedResponse implements ToEnvelope {
   get isOk(): boolean;
   /** Whether the response is a failure (early or not). */
   get isErr(): boolean;
+  /** The request id and the `'result'` of a success; `undefined` on a failure. */
+  get ok(): ResponseOk | undefined;
+  /** The request id and the `'error'` of a failure; `undefined` on a success. */
+  get err(): ResponseErr | undefined;
   /** The request id; `undefined` on an early failure. */
   get id(): ARID | undefined;
   /** The request id; `Envelope[General]` on an early failure, which has none. */
@@ -395,21 +421,20 @@ export declare class SealedResponse implements ToEnvelope {
   /**
    * The response with `'sender'`, the sender's continuation when there is
    * state (with `validUntil`, encrypted to the sender) and the peer
-   * continuation; signed by `signer` and encrypted to `recipients`.
+   * continuation; signed by `signer` and encrypted to `recipients`. With
+   * no options: unsigned, unsealed.
    */
-  seal({ signer, recipients, validUntil }?: SealOptions): Envelope;
-  /** `seal` with nothing: unsigned, unsealed. */
-  toEnvelope(): Envelope;
+  toEnvelope({ signer, recipients, validUntil }?: ToEnvelopeOptions): Envelope;
   /**
    * Decrypts to the recipient, verifies the sender's signature, checks
    * the sender continuation (when present it must be encrypted), opens
    * the recipient's own continuation and parses the response; a `null`
    * state reads as no state.
    */
-  static open(sealed: Envelope, options: OpenOptions): SealedResponse;
+  static fromEnvelope(sealed: Envelope, options: FromEnvelopeOptions): SealedResponse;
   /** `SealedResponse(<summary>, state: <flat>, peer_continuation: None|Some)`, the reference's `Display`. */
   toString(): string;
-  /** Same response, sender document, state digest and peer continuation digest, as the reference's equality. */
+  /** Same response and sender document, identical state and peer continuation (digest and structure), as the reference's `PartialEq`. */
   equals(other: SealedResponse): boolean;
 }
 //#endregion
@@ -418,15 +443,15 @@ export declare class SealedResponse implements ToEnvelope {
 interface SealedEventInput {
   /** The event id. */
   id: ARID;
-  /** The sender's document; its encryption key seals the sender's state, its signing key signs. */
+  /** The sender's document, copied at construction; its encryption key seals the sender's state, its signing key signs. */
   sender: XIDDocument;
   /** The sender's own state, returned in a reply. */
   state?: EnvelopeInput | undefined;
   /** The peer's continuation, as received, handed back. */
   peerContinuation?: Envelope | undefined;
 }
-/** What `SealedEvent.open` takes to read the content as `T` rather than as text. */
-interface OpenEventOptions<T extends EnvelopeInput> extends OpenOptions {
+/** What `SealedEvent.fromEnvelope` takes to read the content as `T` rather than as text. */
+interface FromEnvelopeEventOptions<T extends EnvelopeInput> extends FromEnvelopeOptions {
   /** Reads the `'content'` envelope; the reference's `T: TryFrom<Envelope>`. */
   content: (envelope: Envelope) => T;
 }
@@ -473,25 +498,24 @@ export declare class SealedEvent<T extends EnvelopeInput> implements ToEnvelope 
   /**
    * The event with `'sender'`, the sender's continuation when there is
    * state or a `validUntil` (a `null` state then), and the peer
-   * continuation; signed by `signer` and encrypted to `recipients`.
+   * continuation; signed by `signer` and encrypted to `recipients`. With
+   * no options: unsigned, unsealed.
    */
-  seal({ signer, recipients, validUntil }?: SealOptions): Envelope;
-  /** `seal` with nothing: unsigned, unsealed. */
-  toEnvelope(): Envelope;
+  toEnvelope({ signer, recipients, validUntil }?: ToEnvelopeOptions): Envelope;
   /**
    * Decrypts to the recipient, verifies the sender's signature, checks the
    * sender continuation (when present it must be encrypted), opens the
    * recipient's own continuation and parses the event, reading the
    * content as text, or with `content` (`Envelope[General]` when it fails).
    */
-  static open(sealed: Envelope, options: OpenOptions): SealedEvent<string>;
-  /** `open`, reading the content with `content` as `T`. */
-  static open<T extends EnvelopeInput>(sealed: Envelope, options: OpenEventOptions<T>): SealedEvent<T>;
+  static fromEnvelope(sealed: Envelope, options: FromEnvelopeOptions): SealedEvent<string>;
+  /** `fromEnvelope`, reading the content with `content` as `T`. */
+  static fromEnvelope<T extends EnvelopeInput>(sealed: Envelope, options: FromEnvelopeEventOptions<T>): SealedEvent<T>;
   /** `SealedEvent(<summary>, state: <flat>, peer_continuation: None|Some)`; the reference's `Display` prints `SealedRequest(` here. */
   toString(): string;
-  /** Same event, sender document, state digest and peer continuation digest, as the reference's equality. */
+  /** Same event and sender document, identical state and peer continuation (digest and structure), as the reference's `PartialEq`. */
   equals(other: SealedEvent<T>): boolean;
 }
 //#endregion
-export type { ContinuationCheck, ContinuationInput, DateInput, GstpErrorCode, GstpErrorDetails, GstpErrorDetailsByCode, GstpErrorDetailsFor, GstpErrorTyped, OpenContinuationOptions, OpenEventOptions, OpenOptions, SealOptions, SealedEventInput, SealedRequestInput, SealedResponseInput };
+export type { ContinuationCheck, ContinuationFromEnvelopeOptions, ContinuationInput, DateInput, FromEnvelopeEventOptions, FromEnvelopeOptions, GstpErrorCode, GstpErrorDetails, GstpErrorDetailsByCode, GstpErrorDetailsFor, GstpErrorTyped, ResponseErr, ResponseOk, SealedEventInput, SealedRequestInput, SealedResponseInput, ToEnvelopeOptions };
 //# sourceMappingURL=index.d.mts.map

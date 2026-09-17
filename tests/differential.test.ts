@@ -75,9 +75,10 @@ const TOMBSTONES: {
     matches: () => false,
   },
   {
-    // `extractParameter` of a missing parameter invented its message and
-    // `extractParameters` returned CBOR; the decoders read every parameter
-    // the reference's way. The bundle does not run `extract` rows.
+    // `extractObjectForParameter` of a missing parameter invented its
+    // message and `extractObjectsForParameter` returned CBOR; the decoders
+    // read every parameter the reference's way. The bundle does not run
+    // `extract` rows.
     id: "T6 parameter extraction through decoders",
     landed: true,
     matches: () => false,
@@ -96,6 +97,15 @@ const TOMBSTONES: {
     id: "T8 domain faults are TypeErrors",
     landed: true,
     matches: () => false,
+  },
+  {
+    // A result on a response that is not a success, or an error on a
+    // success, threw a bare `Error`; it is `Envelope` (`General`), as
+    // every envelope failure inside a builder.
+    id: "T9 result on a failure and error on a success are Envelope errors",
+    landed: true,
+    matches: (r, a, b) =>
+      r.k === "response" && a.startsWith("throw:Error") && b.startsWith("throw:Envelope"),
   },
 ];
 

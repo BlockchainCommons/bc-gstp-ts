@@ -26,8 +26,8 @@ import {
   expectInstance,
 } from "./guards";
 import {
-  type OpenOptions,
-  type SealOptions,
+  type FromEnvelopeOptions,
+  type ToEnvelopeOptions,
   envelopesEqual,
   openBody,
   sealBody,
@@ -38,7 +38,7 @@ import {
 export interface SealedEventInput {
   /** The event id. */
   id: ARID;
-  /** The sender's document; its encryption key seals the sender's state, its signing key signs. */
+  /** The sender's document, copied at construction; its encryption key seals the sender's state, its signing key signs. */
   sender: XIDDocument;
   /** The sender's own state, returned in a reply. */
   state?: EnvelopeInput | undefined;
@@ -46,8 +46,8 @@ export interface SealedEventInput {
   peerContinuation?: Envelope | undefined;
 }
 
-/** What `SealedEvent.open` takes to read the content as `T` rather than as text. */
-export interface OpenEventOptions<T extends EnvelopeInput> extends OpenOptions {
+/** What `SealedEvent.fromEnvelope` takes to read the content as `T` rather than as text. */
+export interface FromEnvelopeEventOptions<T extends EnvelopeInput> extends FromEnvelopeOptions {
   /** Reads the `'content'` envelope; the reference's `T: TryFrom<Envelope>`. */
   content: (envelope: Envelope) => T;
 }
@@ -81,11 +81,10 @@ export class SealedEvent<T extends EnvelopeInput> implements ToEnvelope {
     { id, sender, state, peerContinuation }: SealedEventInput,
   ): SealedEvent<T> {
     expectArid(id, "id");
-    expectDocument(sender, "sender");
     if (peerContinuation !== undefined) expectEnvelope(peerContinuation, "peerContinuation");
     return new SealedEvent(
       Event.from(content, id),
-      sender,
+      expectDocument(sender, "sender").clone(),
       state === undefined ? undefined : Envelope.from(state),
       peerContinuation,
     );
@@ -169,15 +168,19 @@ export class SealedEvent<T extends EnvelopeInput> implements ToEnvelope {
   /**
    * The event with `'sender'`, the sender's continuation when there is
    * state or a `validUntil` (a `null` state then), and the peer
-   * continuation; signed by `signer` and encrypted to `recipients`.
+   * continuation; signed by `signer` and encrypted to `recipients`. With
+   * no options: unsigned, unsealed.
    */
-  seal({ signer, recipients, validUntil }: SealOptions = {}): Envelope {
+  toEnvelope({ signer, recipients, validUntil }: ToEnvelopeOptions = {}): Envelope {
     const key = senderEncryptionKey(this._sender);
     let senderContinuation: Envelope | undefined;
     if (this._state !== undefined) {
-      senderContinuation = Continuation.from({ state: this._state, validUntil }).seal(key);
+      senderContinuation = Continuation.from({ state: this._state, validUntil }).toEnvelope(key);
     } else if (validUntil !== undefined) {
-      senderContinuation = Continuation.from({ state: Envelope.from(null), validUntil }).seal(key);
+      senderContinuation = Continuation.from({
+        state: Envelope.from(null),
+        validUntil,
+      }).toEnvelope(key);
     }
     return sealBody(
       this._event.toEnvelope(),
@@ -188,26 +191,21 @@ export class SealedEvent<T extends EnvelopeInput> implements ToEnvelope {
     );
   }
 
-  /** `seal` with nothing: unsigned, unsealed. */
-  toEnvelope(): Envelope {
-    return this.seal();
-  }
-
   /**
    * Decrypts to the recipient, verifies the sender's signature, checks the
    * sender continuation (when present it must be encrypted), opens the
    * recipient's own continuation and parses the event, reading the
    * content as text, or with `content` (`Envelope[General]` when it fails).
    */
-  static open(sealed: Envelope, options: OpenOptions): SealedEvent<string>;
-  /** `open`, reading the content with `content` as `T`. */
-  static open<T extends EnvelopeInput>(
+  static fromEnvelope(sealed: Envelope, options: FromEnvelopeOptions): SealedEvent<string>;
+  /** `fromEnvelope`, reading the content with `content` as `T`. */
+  static fromEnvelope<T extends EnvelopeInput>(
     sealed: Envelope,
-    options: OpenEventOptions<T>,
+    options: FromEnvelopeEventOptions<T>,
   ): SealedEvent<T>;
-  static open<T extends EnvelopeInput>(
+  static fromEnvelope<T extends EnvelopeInput>(
     sealed: Envelope,
-    options: OpenOptions & { content?: ((envelope: Envelope) => T) | undefined },
+    options: FromEnvelopeOptions & { content?: ((envelope: Envelope) => T) | undefined },
   ): SealedEvent<T | string> {
     const { envelope, sender, peerContinuation, state } = openBody(sealed, options, false);
     const extractor: (env: Envelope) => T | string =
@@ -223,7 +221,7 @@ export class SealedEvent<T extends EnvelopeInput> implements ToEnvelope {
     return `SealedEvent(${this._event.summary()}, state: ${stateStr}, peer_continuation: ${peerStr})`;
   }
 
-  /** Same event, sender document, state digest and peer continuation digest, as the reference's equality. */
+  /** Same event and sender document, identical state and peer continuation (digest and structure), as the reference's `PartialEq`. */
   equals(other: SealedEvent<T>): boolean {
     expectInstance(other, SealedEvent, "other");
     return (

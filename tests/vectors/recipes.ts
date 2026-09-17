@@ -4,8 +4,10 @@
  * objects as leaves or in other shapes), and sealed requests, responses
  * and events built by a seeded sender, signed, sealed to zero, one or many
  * seeded recipients, and opened by each; parameter reads through named
- * decoders; state on a failed response; the JavaScript input domain; and
- * post-quantum keys. Everything here draws randomness (nonces, ephemeral
+ * decoders; state on a failed response; messages assembled by hand (a
+ * `'sender'` missing, repeated or not a document, an unsigned body, a plain
+ * sender continuation); the JavaScript input domain; and post-quantum
+ * keys. Everything here draws randomness (nonces, ephemeral
  * keys, signatures), so outcomes are the envelope's format strings — the
  * signed-but-unsealed form shows the whole shape, the sealed form only
  * `ENCRYPTED` — plus the fields of the opened message, and a rejection as
@@ -82,7 +84,27 @@ export type Recipe =
       untilShape?: Shape;
       /** A second `'id'` assertion with this ARID hex. */
       duplicateId?: string;
+      /** Also compares the continuation to one whose state is elided: equality is structural. */
+      elided?: boolean;
       open: { expectedId?: string; now?: string; recipient?: string }[];
+    }
+  | {
+      k: "sealedEnvelope";
+      /** The class that opens it; the body is the minimal message of that kind with `id`. */
+      as: "request" | "response" | "event";
+      /** ARID hex of the body's id. */
+      id: string;
+      /** The seed whose document `senders` names and whose private keys sign. */
+      by: string;
+      /** The `'sender'` objects, in order: the document, or a text leaf; none leaves the assertion out. */
+      senders: ("document" | "text")[];
+      /** Sign the body (default true). */
+      sign?: boolean;
+      /** A plain-text `'senderContinuation'`, which a recipient must reject. */
+      plainSenderContinuation?: boolean;
+      /** Recipient seeds; the signed body is wrapped and encrypted to their keys. */
+      recipients: string[];
+      open: OpenSpec[];
     }
   | ({
       k: "request";
@@ -133,6 +155,11 @@ export interface VectorApi {
     sealed: string;
     opens: { by: string; outcome: string }[];
   };
+  /** The sealed format and one opened outcome per `open` entry of a hand-assembled message. */
+  sealedEnvelope(r: Extract<Recipe, { k: "sealedEnvelope" }>): {
+    sealed: string;
+    opens: { by: string; outcome: string }[];
+  };
   /** A JavaScript-only input by name; the rendered value, or it throws. */
   domain(name: string): string;
   /** `throw:<code>[<inner>]|<message>` for a thrown value. */
@@ -155,13 +182,15 @@ const sealedTail = (r: Extract<Recipe, { sender: string }>): string =>
 export function recipeName(r: Recipe): string {
   switch (r.k) {
     case "continuation":
-      return `continuation ${valueName(r.state)}${r.id ? ` id${r.idShape ? `(${r.idShape})` : ""}` : ""}${r.duplicateId ? " id×2" : ""}${r.validUntil ? ` until ${r.validUntil}${r.untilShape ? `(${r.untilShape})` : ""}` : ""}${r.encryptTo ? ` to ${r.encryptTo.slice(0, 8)}` : ""} ×${r.open.length}`;
+      return `continuation ${valueName(r.state)}${r.id ? ` id${r.idShape ? `(${r.idShape})` : ""}` : ""}${r.duplicateId ? " id×2" : ""}${r.validUntil ? ` until ${r.validUntil}${r.untilShape ? `(${r.untilShape})` : ""}` : ""}${r.encryptTo ? ` to ${r.encryptTo.slice(0, 8)}` : ""}${r.elided ? " vs elided" : ""} ×${r.open.length}`;
     case "request":
       return `request ${r.func}(${(r.params ?? []).map(([k, v]) => `${k}=${valueName(v)}`).join(",")}) from ${r.sender.slice(0, 8)}${r.state !== undefined ? ` state` : ""}${r.peer ? ` peer${r.peer.encrypt === false ? "!" : ""}` : ""}${r.extract ? ` extract ${r.extract.map(([k, d]) => `${k}:${d}`).join(",")}` : ""}${sealedTail(r)}`;
     case "response":
       return `response ${r.kind}${r.result !== undefined ? ` ${valueName(r.result)}` : ""}${r.error !== undefined ? ` !${valueName(r.error)}` : ""} from ${r.sender.slice(0, 8)}${r.state !== undefined ? " state" : ""}${r.stateOnFailure ? " state-on-failure" : ""}${r.peer ? " peer" : ""}${sealedTail(r)}`;
     case "event":
       return `event ${valueName(r.content)} from ${r.sender.slice(0, 8)}${r.state !== undefined ? " state" : ""}${r.peer ? " peer" : ""}${sealedTail(r)}`;
+    case "sealedEnvelope":
+      return `hand-built ${r.as} by ${r.by.slice(0, 8)} senders=${r.senders.join("+") || "none"}${r.sign === false ? " unsigned" : ""}${r.plainSenderContinuation ? " plain-continuation" : ""} → ${r.recipients.map((s) => s.slice(0, 8)).join("+")} ×${r.open.length}`;
     case "domain":
       return `domain ${r.case} (${r.cls})`;
   }
@@ -182,6 +211,10 @@ export const maskFingerprints = (s: string): string => s.replace(/\b[0-9a-f]{8}\
 export function materialize(api: VectorApi, r: Recipe): Outcome {
   try {
     if (r.k === "domain") return api.domain(r.case);
+    if (r.k === "sealedEnvelope") {
+      const s = api.sealedEnvelope(r);
+      return `sealed=${s.sealed}\n${s.opens.map((o) => `open(${o.by})=${o.outcome}`).join("\n")}`;
+    }
     if (r.k === "continuation") {
       return r.open
         .map((o) => {
@@ -217,11 +250,16 @@ export const attempt = (api: VectorApi, f: () => string): string => {
 export const renderOpened = (o: Opened): string =>
   `summary=${o.summary}; id=${o.id}; sender=${o.sender}; state=${o.state}; peer=${o.peer}; ${o.detail}`;
 
-/** Whether the frozen bundle can run a recipe: not the JavaScript-only, decoder, shape or post-quantum rows. */
+/** Whether the frozen bundle can run a recipe: not the JavaScript-only, decoder, shape, elision, hand-built or post-quantum rows. */
 export const isBaselineSupported = (r: Recipe): boolean => {
-  if (r.k === "domain") return false;
+  if (r.k === "domain" || r.k === "sealedEnvelope") return false;
   if (r.k === "continuation")
-    return r.idShape === undefined && r.untilShape === undefined && r.duplicateId === undefined;
+    return (
+      r.idShape === undefined &&
+      r.untilShape === undefined &&
+      r.duplicateId === undefined &&
+      r.elided !== true
+    );
   if (r.keys === "pq") return false;
   if (r.k === "request" && r.extract !== undefined) return false;
   if (r.k === "response" && r.stateOnFailure === true) return false;

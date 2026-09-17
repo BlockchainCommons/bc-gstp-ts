@@ -40,8 +40,8 @@ import {
   expectInstance,
 } from "./guards";
 import {
-  type OpenOptions,
-  type SealOptions,
+  type FromEnvelopeOptions,
+  type ToEnvelopeOptions,
   envelopesEqual,
   openBody,
   sealBody,
@@ -52,7 +52,7 @@ import {
 export interface SealedRequestInput {
   /** The request id. */
   id: ARID;
-  /** The sender's document; its encryption key seals the sender's state, its signing key signs. */
+  /** The sender's document, copied at construction; its encryption key seals the sender's state, its signing key signs. */
   sender: XIDDocument;
   /** The sender's own state, returned in the reply. */
   state?: EnvelopeInput | undefined;
@@ -90,11 +90,10 @@ export class SealedRequest implements ToEnvelope {
     { id, sender, state, peerContinuation }: SealedRequestInput,
   ): SealedRequest {
     expectArid(id, "id");
-    expectDocument(sender, "sender");
     if (peerContinuation !== undefined) expectEnvelope(peerContinuation, "peerContinuation");
     return new SealedRequest(
       Request.from(func, id),
-      sender,
+      expectDocument(sender, "sender").clone(),
       state === undefined ? undefined : Envelope.from(state),
       peerContinuation,
     );
@@ -172,7 +171,7 @@ export class SealedRequest implements ToEnvelope {
   }
 
   /** Every `param` argument. */
-  parameters(param: ParameterID | Parameter): Envelope[] {
+  objectsForParameter(param: ParameterID | Parameter): Envelope[] {
     return guarded(() => this._request.body.objectsForParameter(param));
   }
 
@@ -185,12 +184,12 @@ export class SealedRequest implements ToEnvelope {
    * `Envelope[NotLeaf]` when the argument is not a leaf, `Envelope[Cbor]`
    * when the decoder rejects it.
    */
-  extractParameter<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T {
+  extractObjectForParameter<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T {
     return guarded(() => this._request.body.objectForParameter(param).expectSubject(decoder));
   }
 
-  /** `extractParameter`, or `undefined` when the parameter is absent. */
-  extractOptionalParameter<T>(
+  /** `extractObjectForParameter`, or `undefined` when the parameter is absent. */
+  extractOptionalObjectForParameter<T>(
     param: ParameterID | Parameter,
     decoder: CborDecoder<T>,
   ): T | undefined {
@@ -201,7 +200,7 @@ export class SealedRequest implements ToEnvelope {
   }
 
   /** Every `param` argument's leaf, decoded. */
-  extractParameters<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T[] {
+  extractObjectsForParameter<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T[] {
     return guarded(() =>
       this._request.body.objectsForParameter(param).map((env) => env.expectSubject(decoder)),
     );
@@ -246,15 +245,16 @@ export class SealedRequest implements ToEnvelope {
    * The request with `'sender'`, the sender's continuation (the state —
    * `null` without one — bound to the request id and `validUntil`,
    * encrypted to the sender) and the peer continuation; signed by
-   * `signer` and encrypted to `recipients` when given.
+   * `signer` and encrypted to `recipients` when given. With no options:
+   * unsigned, unsealed.
    */
-  seal({ signer, recipients, validUntil }: SealOptions = {}): Envelope {
+  toEnvelope({ signer, recipients, validUntil }: ToEnvelopeOptions = {}): Envelope {
     const continuation = Continuation.from({
       state: this._state ?? Envelope.from(null),
       validId: this.id,
       validUntil,
     });
-    const senderContinuation = continuation.seal(senderEncryptionKey(this._sender));
+    const senderContinuation = continuation.toEnvelope(senderEncryptionKey(this._sender));
     return sealBody(
       this._request.toEnvelope(),
       this._sender,
@@ -264,17 +264,12 @@ export class SealedRequest implements ToEnvelope {
     );
   }
 
-  /** `seal` with nothing: unsigned, unsealed. */
-  toEnvelope(): Envelope {
-    return this.seal();
-  }
-
   /**
    * Decrypts to the recipient, verifies the sender's signature, requires
    * an encrypted sender continuation, opens the recipient's own
    * continuation (`expectedId`, `now`) and parses the request.
    */
-  static open(sealed: Envelope, options: OpenOptions): SealedRequest {
+  static fromEnvelope(sealed: Envelope, options: FromEnvelopeOptions): SealedRequest {
     const { envelope, sender, peerContinuation, state } = openBody(sealed, options, true);
     const request = guarded(() => Request.fromEnvelope(envelope));
     return new SealedRequest(request, sender, state, peerContinuation);
@@ -287,7 +282,7 @@ export class SealedRequest implements ToEnvelope {
     return `SealedRequest(${this._request.summary()}, state: ${stateStr}, peer_continuation: ${peerStr})`;
   }
 
-  /** Same request, sender document, state digest and peer continuation digest, as the reference's equality. */
+  /** Same request and sender document, identical state and peer continuation (digest and structure), as the reference's `PartialEq`. */
   equals(other: SealedRequest): boolean {
     expectInstance(other, SealedRequest, "other");
     return (

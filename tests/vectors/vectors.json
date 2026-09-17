@@ -1,5 +1,5 @@
 {
- "count": 177,
+ "count": 192,
  "vectors": [
   {
    "name": "continuation \"The state of things.\" id until 2024-07-04T11:12:11Z ×1",
@@ -1438,6 +1438,313 @@
    "expect": "throw:StateOnFailedResponse|Cannot set state on a failed response"
   },
   {
+   "name": "response failure \"r\" from 518684c5 → 7eb559bb",
+   "recipe": {
+    "k": "response",
+    "sender": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "recipients": [
+     "7eb559bbbf6cce2632cf9f194aeb50943de7e1cbad54dcfab27a42759f5e2fed"
+    ],
+    "open": [],
+    "kind": "failure",
+    "result": "r"
+   },
+   "expect": "throw:Envelope[General]|general error: Cannot set result on a failed response"
+  },
+  {
+   "name": "response earlyFailure \"r\" from 518684c5 → 7eb559bb",
+   "recipe": {
+    "k": "response",
+    "sender": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "recipients": [
+     "7eb559bbbf6cce2632cf9f194aeb50943de7e1cbad54dcfab27a42759f5e2fed"
+    ],
+    "open": [],
+    "kind": "earlyFailure",
+    "result": "r"
+   },
+   "expect": "throw:Envelope[General]|general error: Cannot set result on a failed response"
+  },
+  {
+   "name": "response success !\"e\" from 518684c5 → 7eb559bb",
+   "recipe": {
+    "k": "response",
+    "sender": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "recipients": [
+     "7eb559bbbf6cce2632cf9f194aeb50943de7e1cbad54dcfab27a42759f5e2fed"
+    ],
+    "open": [],
+    "kind": "success",
+    "error": "e"
+   },
+   "expect": "throw:Envelope[General]|general error: Cannot set error on a successful response"
+  },
+  {
+   "name": "continuation nextPage(fromRecord=100,toRecord=199) id until 2024-07-04T11:12:11Z vs elided ×1",
+   "recipe": {
+    "k": "continuation",
+    "state": {
+     "expr": "nextPage",
+     "params": [
+      [
+       "fromRecord",
+       100
+      ],
+      [
+       "toRecord",
+       199
+      ]
+     ]
+    },
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "validUntil": "2024-07-04T11:12:11Z",
+    "elided": true,
+    "open": [
+     {
+      "expectedId": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc"
+     }
+    ]
+   },
+   "expect": "format={\n    «\"nextPage\"» [\n        ❰\"fromRecord\"❱: 100\n        ❰\"toRecord\"❱: 199\n    ]\n} [\n    'id': ARID(c66be27d)\n    'validUntil': 2024-07-04T11:12:11Z\n]\nopen(id,-,-)=state=«\"nextPage\"» [ ❰\"fromRecord\"❱: 100, ❰\"toRecord\"❱: 199 ]; id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; validUntil=2024-07-04T11:12:11.000Z; equals=true; elidedEquals=false"
+  },
+  {
+   "name": "continuation \"s\" to 518684c5 vs elided ×1",
+   "recipe": {
+    "k": "continuation",
+    "state": "s",
+    "encryptTo": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553",
+    "elided": true,
+    "open": [
+     {
+      "recipient": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553"
+     }
+    ]
+   },
+   "expect": "format=ENCRYPTED [\n    'hasRecipient': SealedMessage\n]\nopen(-,-,518684c5)=state=\"s\"; id=-; validUntil=-; equals=true; elidedEquals=false"
+  },
+  {
+   "name": "hand-built request by 7eb559bb senders=document → 518684c5 ×1",
+   "recipe": {
+    "k": "sealedEnvelope",
+    "as": "request",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "by": "7eb559bbbf6cce2632cf9f194aeb50943de7e1cbad54dcfab27a42759f5e2fed",
+    "senders": [
+     "document"
+    ],
+    "recipients": [
+     "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553"
+    ],
+    "open": [
+     {
+      "recipient": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553",
+      "now": "2024-07-04T11:11:11Z"
+     }
+    ]
+   },
+   "expect": "sealed=ENCRYPTED [\n    'hasRecipient': SealedMessage\n]\nopen(518684c5)=throw:MissingPeerContinuation|requests must contain a peer continuation"
+  },
+  {
+   "name": "hand-built response by 7eb559bb senders=document → 518684c5 ×1",
+   "recipe": {
+    "k": "sealedEnvelope",
+    "as": "response",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "by": "7eb559bbbf6cce2632cf9f194aeb50943de7e1cbad54dcfab27a42759f5e2fed",
+    "senders": [
+     "document"
+    ],
+    "recipients": [
+     "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553"
+    ],
+    "open": [
+     {
+      "recipient": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553",
+      "now": "2024-07-04T11:11:11Z"
+     }
+    ]
+   },
+   "expect": "sealed=ENCRYPTED [\n    'hasRecipient': SealedMessage\n]\nopen(518684c5)=summary=SealedResponse(id: c66be27d, result: 'OK', state: None, peer_continuation: None); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=-"
+  },
+  {
+   "name": "hand-built event by 7eb559bb senders=document → 518684c5 ×1",
+   "recipe": {
+    "k": "sealedEnvelope",
+    "as": "event",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "by": "7eb559bbbf6cce2632cf9f194aeb50943de7e1cbad54dcfab27a42759f5e2fed",
+    "senders": [
+     "document"
+    ],
+    "recipients": [
+     "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553"
+    ],
+    "open": [
+     {
+      "recipient": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553",
+      "now": "2024-07-04T11:11:11Z"
+     }
+    ]
+   },
+   "expect": "sealed=ENCRYPTED [\n    'hasRecipient': SealedMessage\n]\nopen(518684c5)=summary=SealedEvent(id: c66be27d, content: \"x\", state: None, peer_continuation: None); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=-"
+  },
+  {
+   "name": "hand-built request by 7eb559bb senders=none → 518684c5 ×1",
+   "recipe": {
+    "k": "sealedEnvelope",
+    "as": "request",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "by": "7eb559bbbf6cce2632cf9f194aeb50943de7e1cbad54dcfab27a42759f5e2fed",
+    "senders": [],
+    "recipients": [
+     "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553"
+    ],
+    "open": [
+     {
+      "recipient": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553",
+      "now": "2024-07-04T11:11:11Z"
+     }
+    ]
+   },
+   "expect": "sealed=ENCRYPTED [\n    'hasRecipient': SealedMessage\n]\nopen(518684c5)=throw:Envelope[NonexistentPredicate]|no assertion matches the predicate"
+  },
+  {
+   "name": "hand-built response by 7eb559bb senders=document+text → 518684c5 ×1",
+   "recipe": {
+    "k": "sealedEnvelope",
+    "as": "response",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "by": "7eb559bbbf6cce2632cf9f194aeb50943de7e1cbad54dcfab27a42759f5e2fed",
+    "senders": [
+     "document",
+     "text"
+    ],
+    "recipients": [
+     "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553"
+    ],
+    "open": [
+     {
+      "recipient": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553",
+      "now": "2024-07-04T11:11:11Z"
+     }
+    ]
+   },
+   "expect": "sealed=ENCRYPTED [\n    'hasRecipient': SealedMessage\n]\nopen(518684c5)=throw:Envelope[AmbiguousPredicate]|more than one assertion matches the predicate"
+  },
+  {
+   "name": "hand-built event by 7eb559bb senders=text → 518684c5 ×1",
+   "recipe": {
+    "k": "sealedEnvelope",
+    "as": "event",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "by": "7eb559bbbf6cce2632cf9f194aeb50943de7e1cbad54dcfab27a42759f5e2fed",
+    "senders": [
+     "text"
+    ],
+    "recipients": [
+     "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553"
+    ],
+    "open": [
+     {
+      "recipient": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553",
+      "now": "2024-07-04T11:11:11Z"
+     }
+    ]
+   },
+   "expect": "sealed=ENCRYPTED [\n    'hasRecipient': SealedMessage\n]\nopen(518684c5)=throw:XID[Cbor]|CBOR error"
+  },
+  {
+   "name": "hand-built request by 7eb559bb senders=document unsigned → 518684c5 ×1",
+   "recipe": {
+    "k": "sealedEnvelope",
+    "as": "request",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "by": "7eb559bbbf6cce2632cf9f194aeb50943de7e1cbad54dcfab27a42759f5e2fed",
+    "senders": [
+     "document"
+    ],
+    "recipients": [
+     "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553"
+    ],
+    "open": [
+     {
+      "recipient": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553",
+      "now": "2024-07-04T11:11:11Z"
+     }
+    ],
+    "sign": false
+   },
+   "expect": "sealed=ENCRYPTED [\n    'hasRecipient': SealedMessage\n]\nopen(518684c5)=throw:Envelope[NotWrapped]|cannot unwrap an envelope that was not wrapped"
+  },
+  {
+   "name": "hand-built response by 7eb559bb senders=document plain-continuation → 518684c5 ×1",
+   "recipe": {
+    "k": "sealedEnvelope",
+    "as": "response",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "by": "7eb559bbbf6cce2632cf9f194aeb50943de7e1cbad54dcfab27a42759f5e2fed",
+    "senders": [
+     "document"
+    ],
+    "recipients": [
+     "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553"
+    ],
+    "open": [
+     {
+      "recipient": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553",
+      "now": "2024-07-04T11:11:11Z"
+     }
+    ],
+    "plainSenderContinuation": true
+   },
+   "expect": "sealed=ENCRYPTED [\n    'hasRecipient': SealedMessage\n]\nopen(518684c5)=throw:PeerContinuationNotEncrypted|peer continuation must be encrypted"
+  },
+  {
+   "name": "hand-built event by 7eb559bb senders=none unsigned → 518684c5 ×1",
+   "recipe": {
+    "k": "sealedEnvelope",
+    "as": "event",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "by": "7eb559bbbf6cce2632cf9f194aeb50943de7e1cbad54dcfab27a42759f5e2fed",
+    "senders": [],
+    "recipients": [
+     "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553"
+    ],
+    "open": [
+     {
+      "recipient": "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553",
+      "now": "2024-07-04T11:11:11Z"
+     }
+    ],
+    "sign": false
+   },
+   "expect": "sealed=ENCRYPTED [\n    'hasRecipient': SealedMessage\n]\nopen(518684c5)=throw:Envelope[NotWrapped]|cannot unwrap an envelope that was not wrapped"
+  },
+  {
+   "name": "hand-built request by 7eb559bb senders=document → 518684c5 ×1",
+   "recipe": {
+    "k": "sealedEnvelope",
+    "as": "request",
+    "id": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
+    "by": "7eb559bbbf6cce2632cf9f194aeb50943de7e1cbad54dcfab27a42759f5e2fed",
+    "senders": [
+     "document"
+    ],
+    "recipients": [
+     "518684c556472008a67932f7c682125b50cb72e8216f6906358fdaf28d354553"
+    ],
+    "open": [
+     {
+      "recipient": "0000000000000000000000000000000000000000000000000000000000000001"
+     }
+    ]
+   },
+   "expect": "sealed=ENCRYPTED [\n    'hasRecipient': SealedMessage\n]\nopen(00000000)=throw:Envelope[UnknownRecipient]|unknown recipient"
+  },
+  {
    "name": "domain continuation.validUntil.nan (J3)",
    "recipe": {
     "k": "domain",
@@ -1447,10 +1754,10 @@
    "expect": "throw:TypeError"
   },
   {
-   "name": "domain continuation.validFor.nan (J3)",
+   "name": "domain continuation.validDuration.nan (J3)",
    "recipe": {
     "k": "domain",
-    "case": "continuation.validFor.nan",
+    "case": "continuation.validDuration.nan",
     "cls": "J3"
    },
    "expect": "throw:TypeError"
@@ -1474,37 +1781,37 @@
    "expect": "throw:TypeError"
   },
   {
-   "name": "domain open.noRecipient (J3)",
+   "name": "domain fromEnvelope.noRecipient (J3)",
    "recipe": {
     "k": "domain",
-    "case": "open.noRecipient",
+    "case": "fromEnvelope.noRecipient",
     "cls": "J3"
    },
    "expect": "throw:TypeError"
   },
   {
-   "name": "domain event.open.noContent (J4)",
+   "name": "domain event.fromEnvelope.noContent (J4)",
    "recipe": {
     "k": "domain",
-    "case": "event.open.noContent",
+    "case": "event.fromEnvelope.noContent",
     "cls": "J4"
    },
    "expect": "string:text"
   },
   {
-   "name": "domain seal.validUntil.cborDate (J4)",
+   "name": "domain toEnvelope.validUntil.cborDate (J4)",
    "recipe": {
     "k": "domain",
-    "case": "seal.validUntil.cborDate",
+    "case": "toEnvelope.validUntil.cborDate",
     "cls": "J4"
    },
    "expect": "request(ARID(c66be27d)) ["
   },
   {
-   "name": "domain open.now.cborDate (J4)",
+   "name": "domain fromEnvelope.now.cborDate (J4)",
    "recipe": {
     "k": "domain",
-    "case": "open.now.cborDate",
+    "case": "fromEnvelope.now.cborDate",
     "cls": "J4"
    },
    "expect": "c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc"

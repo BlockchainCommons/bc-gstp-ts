@@ -81,7 +81,7 @@ describe("Post-Quantum", () => {
       const { privateKeys, publicKeys } = createPQKeypairs();
 
       const continuation = requestContinuation();
-      const envelope = continuation.seal(publicKeys);
+      const envelope = continuation.toEnvelope(publicKeys);
 
       // The envelope shape, as the reference's `test_encrypted_continuation`
       // pins it: the `SealedMessage` summariser renders the encapsulation
@@ -95,15 +95,15 @@ describe("Post-Quantum", () => {
 
       // Parse with valid time (30 seconds after request date)
       const validNow = new Date(requestDate().getTime() + 30 * 1000);
-      const parsedContinuation = Continuation.open(envelope, {
+      const parsedContinuation = Continuation.fromEnvelope(envelope, {
         expectedId: requestId(),
         now: validNow,
         recipient: privateKeys,
       });
 
       expect(parsedContinuation.state.digest().equals(continuation.state.digest())).toBe(true);
-      const expectedId = continuation.validId;
-      const actualId = parsedContinuation.validId;
+      const expectedId = continuation.id;
+      const actualId = parsedContinuation.id;
       if (expectedId !== undefined && actualId !== undefined) {
         expect(actualId.equals(expectedId)).toBe(true);
       } else {
@@ -117,13 +117,13 @@ describe("Post-Quantum", () => {
       const { privateKeys, publicKeys } = createPQKeypairs();
 
       const continuation = requestContinuation();
-      const envelope = continuation.seal(publicKeys);
+      const envelope = continuation.toEnvelope(publicKeys);
 
       // Parse with invalid time (90 seconds after request date - expired)
       const invalidNow = new Date(requestDate().getTime() + 90 * 1000);
 
       expect(() => {
-        Continuation.open(envelope, {
+        Continuation.fromEnvelope(envelope, {
           expectedId: requestId(),
           now: invalidNow,
           recipient: privateKeys,
@@ -135,14 +135,14 @@ describe("Post-Quantum", () => {
       const { privateKeys, publicKeys } = createPQKeypairs();
 
       const continuation = requestContinuation();
-      const envelope = continuation.seal(publicKeys);
+      const envelope = continuation.toEnvelope(publicKeys);
 
       // Parse with valid time but invalid ID
       const validNow = new Date(requestDate().getTime() + 30 * 1000);
       const invalidId = ARID.random();
 
       expect(() => {
-        Continuation.open(envelope, {
+        Continuation.fromEnvelope(envelope, {
           expectedId: invalidId,
           now: validNow,
           recipient: privateKeys,
@@ -173,7 +173,7 @@ describe("Post-Quantum", () => {
         state: serverState,
         validUntil: serverContinuationValidUntil,
       });
-      const serverContinuationEnvelope = serverContinuation.seal(serverPublicKeys);
+      const serverContinuationEnvelope = serverContinuation.toEnvelope(serverPublicKeys);
 
       // Client composes a request
       const clientContinuationValidUntil = new Date(now.getTime() + 60 * 1000);
@@ -186,22 +186,22 @@ describe("Post-Quantum", () => {
         .withPeerContinuation(serverContinuationEnvelope);
 
       // Create sealed envelope (signed by client with MLDSA, encrypted to server with MLKEM)
-      const sealedClientRequestEnvelope = clientRequest.seal({
+      const sealedClientRequestEnvelope = clientRequest.toEnvelope({
         validUntil: clientContinuationValidUntil,
         signer: clientPrivateKeys,
         recipients: [server],
       });
 
       // Server receives and parses the envelope
-      const parsedClientRequest = SealedRequest.open(sealedClientRequestEnvelope, {
+      const parsedClientRequest = SealedRequest.fromEnvelope(sealedClientRequestEnvelope, {
         recipient: serverPrivateKeys,
         now: now,
       });
 
       // Verify request contents
       expect(parsedClientRequest.function.id).toBe("test");
-      expect(parsedClientRequest.extractParameter("param1", expectInteger)).toBe(42);
-      expect(parsedClientRequest.extractParameter("param2", expectText)).toBe("hello");
+      expect(parsedClientRequest.extractObjectForParameter("param1", expectInteger)).toBe(42);
+      expect(parsedClientRequest.extractObjectForParameter("param2", expectText)).toBe("hello");
       expect(parsedClientRequest.note).toBe("This is a test");
       expect(parsedClientRequest.date?.getTime()).toBe(now.getTime());
 
@@ -222,14 +222,14 @@ describe("Post-Quantum", () => {
 
       // Create sealed response envelope
       const serverContinuationValidUntilNew = new Date(now.getTime() + 60 * 1000);
-      const sealedServerResponseEnvelope = serverResponse.seal({
+      const sealedServerResponseEnvelope = serverResponse.toEnvelope({
         validUntil: serverContinuationValidUntilNew,
         signer: serverPrivateKeys,
         recipients: [client],
       });
 
       // Client receives and parses the response
-      const parsedServerResponse = SealedResponse.open(sealedServerResponseEnvelope, {
+      const parsedServerResponse = SealedResponse.fromEnvelope(sealedServerResponseEnvelope, {
         recipient: clientPrivateKeys,
         expectedId: parsedClientRequest.id,
         now: now,
@@ -260,13 +260,13 @@ describe("Post-Quantum", () => {
         .withDate(now);
 
       // Create sealed envelope (signed by sender with MLDSA, encrypted to recipient with MLKEM)
-      const sealedEventEnvelope = event.seal({
+      const sealedEventEnvelope = event.toEnvelope({
         signer: senderPrivateKeys,
         recipients: [recipient],
       });
 
       // Recipient parses the event
-      const parsedEvent = SealedEvent.open(sealedEventEnvelope, {
+      const parsedEvent = SealedEvent.fromEnvelope(sealedEventEnvelope, {
         recipient: recipientPrivateKeys,
       });
 

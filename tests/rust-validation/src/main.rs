@@ -15,12 +15,19 @@
 //! when `PENDING` names it; a recipe field this program cannot read exactly
 //! is `unparsable`. Anything else that differs is a MISMATCH. Unparsable rows
 //! and mismatches make the process exit 1.
+//!
+//! Besides the class-built messages, a `sealedEnvelope` recipe assembles a
+//! body by hand (the `'sender'` assertion missing, repeated or a text leaf,
+//! an unsigned body, a plain `'senderContinuation'`) and opens it with each
+//! class, so the checks that run before the body is parsed are covered.
 use bc_components::{
     EncapsulationScheme, Encrypter, PrivateKeyBase, PrivateKeys, PublicKeys, SignatureScheme, Signer, XIDProvider,
     ARID,
 };
 use bc_envelope::prelude::*;
-use bc_xid::{XIDDocument, XIDGenesisMarkOptions, XIDInceptionKeyOptions};
+use bc_xid::{
+    XIDDocument, XIDGeneratorOptions, XIDGenesisMarkOptions, XIDInceptionKeyOptions, XIDPrivateKeyOptions, XIDSigningOptions,
+};
 use gstp::prelude::*;
 use gstp::Error;
 use known_values::DirectoryConfig;
@@ -179,9 +186,16 @@ fn continuation_vector(r: &J) -> R<String> {
         let recipient = s(o, "recipient").map(|seed| doc_of(&seed, false).map(|d| private_keys(&d))).transpose()?;
         let opened = match Continuation::try_from_envelope(&env, opt_arid(o, "expectedId")?, opt_date(o, "now")?, recipient.as_ref()) {
             Ok(back) => {
-                let equals = back.state().digest() == c.state().digest() && back.id() == c.id() && back.valid_until() == c.valid_until();
+                // `PartialEq` on `Continuation`: identical state, same id and deadline.
+                let equals = back == c;
+                let elided = if r.get("elided").and_then(|x| x.as_bool()) == Some(true) {
+                    let other = Continuation::new(state.elide()).with_optional_valid_id(id).with_optional_valid_until(until);
+                    format!("; elidedEquals={}", c == other)
+                } else {
+                    String::new()
+                };
                 format!(
-                    "state={}; id={}; validUntil={}; equals={equals}",
+                    "state={}; id={}; validUntil={}; equals={equals}{elided}",
                     back.state().format_flat(),
                     back.id().map_or("-".to_string(), |i| hex::encode(i.data())),
                     back.valid_until().map_or("-".to_string(), |d| iso(&d)),
@@ -382,10 +396,77 @@ fn sealed_vector(r: &J) -> R<String> {
     Ok(if pq { mask_fingerprints(&out) } else { out })
 }
 
+/// A message assembled by hand: the minimal body of the kind it will be opened as, the
+/// `'sender'` objects the recipe lists, a plain `'senderContinuation'` when asked, signed
+/// unless `sign` is false, wrapped and encrypted to the recipients; opened by each `open`.
+fn sealed_envelope_vector(r: &J) -> R<String> {
+    let id = arid(&s(r, "id").ok_or("unparsable:id")?)?;
+    let by = doc_of(&s(r, "by").ok_or("unparsable:by")?, false)?;
+    let kind = s(r, "as").ok_or("unparsable:as")?;
+    let mut env = match kind.as_str() {
+        "request" => Request::new("f", id).into_envelope(),
+        "response" => Response::new_success(id).into_envelope(),
+        "event" => Event::<String>::new("x".to_string(), id).into_envelope(),
+        other => return Err(format!("unparsable:as {other}")),
+    };
+    for sender in arr(r, "senders") {
+        env = match sender.as_str() {
+            Some("document") => env.add_assertion(
+                known_values::SENDER,
+                by.to_envelope(XIDPrivateKeyOptions::default(), XIDGeneratorOptions::default(), XIDSigningOptions::default())
+                    .map_err(|e| format!("unparsable:sender document {e}"))?,
+            ),
+            Some("text") => env.add_assertion(known_values::SENDER, "nope"),
+            other => return Err(format!("unparsable:senders {other:?}")),
+        };
+    }
+    if r.get("plainSenderContinuation").and_then(|x| x.as_bool()) == Some(true) {
+        env = env.add_assertion(known_values::SENDER_CONTINUATION, "state");
+    }
+    if r.get("sign").and_then(|x| x.as_bool()) != Some(false) {
+        env = env.sign(&private_keys(&by));
+    }
+    let recipient_docs: Vec<XIDDocument> =
+        arr(r, "recipients").iter().map(|x| doc_of(x.as_str().unwrap_or_default(), false)).collect::<R<_>>()?;
+    let keys: Vec<&dyn Encrypter> =
+        recipient_docs.iter().map(|d| d.encryption_key().expect("the document holds an encryption key") as &dyn Encrypter).collect();
+    let sealed = env.wrap().encrypt_subject_to_recipients(&keys).map_err(|e| format!("unparsable:seal {e}"))?;
+    let summary = |summary: String, id: Option<ARID>, sender: &XIDDocument, state: Option<&Envelope>, peer: Option<&Envelope>| {
+        format!(
+            "summary={summary}; id={}; sender={}; state={}; peer={}",
+            id.map_or("-".to_string(), |i| hex::encode(i.data())),
+            &hex::encode(sender.xid().data())[..8],
+            flat(state),
+            flat(peer),
+        )
+    };
+    let mut lines = vec![format!("sealed={}", sealed.format())];
+    for o in arr(r, "open") {
+        let recipient = s(o, "recipient").ok_or("unparsable:recipient")?;
+        let keys = private_keys(&doc_of(&recipient, false)?);
+        let expected_id = opt_arid(o, "expectedId")?;
+        let now = opt_date(o, "now")?;
+        let outcome = match kind.as_str() {
+            "request" => SealedRequest::try_from_envelope(&sealed, expected_id, now, &keys)
+                .map(|p| summary(p.to_string(), Some(p.id()), p.sender(), p.state(), p.peer_continuation()))
+                .unwrap_or_else(|e| render(&e)),
+            "response" => SealedResponse::try_from_encrypted_envelope(&sealed, expected_id, now, &keys)
+                .map(|p| summary(p.to_string(), p.id(), p.sender(), p.state(), p.peer_continuation()))
+                .unwrap_or_else(|e| render(&e)),
+            _ => SealedEvent::<Envelope>::try_from_envelope(&sealed, expected_id, now, &keys)
+                .map(|p| summary(p.to_string(), Some(p.id()), p.sender(), p.state(), p.peer_continuation()))
+                .unwrap_or_else(|e| render(&e)),
+        };
+        lines.push(format!("open({})={outcome}", short(&recipient)));
+    }
+    Ok(lines.join("\n"))
+}
+
 fn run(recipe: &J) -> R<String> {
     match s(recipe, "k").as_deref() {
         Some("continuation") => continuation_vector(recipe),
         Some("request") | Some("response") | Some("event") => sealed_vector(recipe),
+        Some("sealedEnvelope") => sealed_envelope_vector(recipe),
         Some("domain") => Ok(format!("js-only:{}", s(recipe, "cls").ok_or("unparsable:cls")?)),
         Some(other) => Err(format!("unparsable:kind {other}")),
         None => Err("unparsable:kind".into()),
@@ -398,8 +479,12 @@ fn run(recipe: &J) -> R<String> {
 
 /// (recipe kind, panic text, port code): panics the port rejects with a typed error.
 const PANIC_MAPPED: &[(&str, &str, &str)] = &[
-    // `with_state` on a response that is not a success panics; the port throws `StateOnFailedResponse`.
+    // `with_state` on a response that is not a success panics (gstp); the port throws `StateOnFailedResponse`.
     ("response", "Cannot set state on a failed response", "StateOnFailedResponse"),
+    // `with_result` on a failure and `with_error` on a success panic (bc-envelope's `ResponseBehavior`);
+    // the port throws `Envelope` (`General`, the panic's text).
+    ("response", "Cannot set result on a failed response", "Envelope"),
+    ("response", "Cannot set error on a successful response", "Envelope"),
 ];
 fn panic_mapped(kind: &str, text: &str) -> Option<&'static str> {
     PANIC_MAPPED.iter().find(|(k, needle, _)| *k == kind && text.contains(needle)).map(|(_, _, code)| *code)
@@ -415,8 +500,9 @@ fn pending(kind: &str, recipe: &J, want: &str) -> Option<&'static str> {
         .map(|(_, _, what)| *what)
 }
 /// S1: an event's summary is printed `SealedRequest(` by the reference's `Display` (U1); every other character agrees.
-fn s1(kind: &str, got: &str, want: &str) -> bool {
-    kind == "event" && got.contains("summary=SealedRequest(") && got.replace("summary=SealedRequest(", "summary=SealedEvent(") == want
+fn s1(kind: &str, recipe: &J, got: &str, want: &str) -> bool {
+    let event = kind == "event" || (kind == "sealedEnvelope" && s(recipe, "as").as_deref() == Some("event"));
+    event && got.contains("summary=SealedRequest(") && got.replace("summary=SealedRequest(", "summary=SealedEvent(") == want
 }
 /// The port's code in a `throw:<code>[<inner>]|<message>` outcome.
 fn ts_code(want: &str) -> Option<&str> {
@@ -468,7 +554,7 @@ fn main() {
                 if got == want { ok += 1; continue; }
                 if let Some(class) = got.strip_prefix("js-only:") { js_only += 1; *js_by.entry(class.to_string()).or_default() += 1; continue; }
                 if let Some(what) = got.strip_prefix("unparsable:") { unparsable += 1; eprintln!("UNPARSABLE {} ({what})", v.name); continue; }
-                if s1(&kind, &got, want) { s1_rows += 1; continue; }
+                if s1(&kind, &v.recipe, &got, want) { s1_rows += 1; continue; }
                 if let Some(what) = pending(&kind, &v.recipe, want) { pend += 1; if verbose { eprintln!("PENDING {} ({what})\n  rust: {}\n  ts:   {}", v.name, cut(&got), cut(want)); } continue; }
                 let (g, w): (Vec<&str>, Vec<&str>) = (got.lines().collect(), want.lines().collect());
                 let line = (0..g.len().max(w.len())).find(|&i| g.get(i) != w.get(i)).unwrap_or(0);

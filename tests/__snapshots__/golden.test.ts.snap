@@ -27,17 +27,19 @@ exports[`freeze > continuation fields that are not leaves 1`] = `
 exports[`freeze > envelope failures and parameter extraction 1`] = `
 [
   "parameter(dup) = throw:GstpError[Envelope]|more than one assertion matches the predicate",
-  "extractParameter(dup) = throw:GstpError[Envelope]|more than one assertion matches the predicate",
-  "extractParameters(dup) = "number:1,number:2"",
-  "extractParameter(nested) = throw:GstpError[Envelope]|dcbor error: the decoded CBOR value was not the expected type",
-  "extractParameter(missing) = throw:GstpError[Envelope]|no assertion matches the predicate",
-  "extractOptionalParameter(missing) = undefined",
-  "extractParameters(p, expectInteger)[0] = number:42",
-  "extractParameter(big, expectInteger) = bigint:1152921504606846977",
-  "extractParameter(p, expectText) = throw:GstpError[Envelope]|dcbor error: the decoded CBOR value was not the expected type",
+  "extractObjectForParameter(dup) = throw:GstpError[Envelope]|more than one assertion matches the predicate",
+  "extractObjectsForParameter(dup) = "number:1,number:2"",
+  "extractObjectForParameter(nested) = throw:GstpError[Envelope]|dcbor error: the decoded CBOR value was not the expected type",
+  "extractObjectForParameter(missing) = throw:GstpError[Envelope]|no assertion matches the predicate",
+  "extractOptionalObjectForParameter(missing) = undefined",
+  "extractObjectsForParameter(p, expectInteger)[0] = number:42",
+  "extractObjectForParameter(big, expectInteger) = bigint:1152921504606846977",
+  "extractObjectForParameter(p, expectText) = throw:GstpError[Envelope]|dcbor error: the decoded CBOR value was not the expected type",
   "objectForParameter(missing) = throw:GstpError[Envelope]|no assertion matches the predicate",
   "failure.result = throw:GstpError[Envelope]|general error: Cannot get result from failed response",
   "success.error = throw:GstpError[Envelope]|general error: Cannot get error from successful response",
+  "failure.withResult = throw:GstpError[Envelope]|general error: Cannot set result on a failed response",
+  "success.withError = throw:GstpError[Envelope]|general error: Cannot set error on a successful response",
 ]
 `;
 
@@ -52,13 +54,13 @@ exports[`freeze > state on a failed response 1`] = `
 exports[`freeze > the JavaScript input domain 1`] = `
 [
   "Continuation.from validUntil NaN = throw:TypeError|validUntil must be a valid Date or a CborDate",
-  "Continuation.from validFor NaN = throw:TypeError|validFor must be a finite, non-negative number of milliseconds",
+  "Continuation.from validDuration NaN = throw:TypeError|validDuration must be a finite, non-negative number of milliseconds",
   "SealedRequest.from id string = throw:TypeError|id must be an ARID",
   "withDate NaN = throw:TypeError|date must be a valid Date or a CborDate",
-  "open without recipient = throw:TypeError|recipient must be a Decrypter (the recipient's private keys)",
-  "SealedEvent.open without content = "text"",
-  "seal validUntil CborDate = "request(ARID(c66be27d)) [ 'body': «\\"f\\"»,"",
-  "open now CborDate = ARID(c66be27d)",
+  "fromEnvelope without recipient = throw:TypeError|recipient must be a Decrypter (the recipient's private keys)",
+  "SealedEvent.fromEnvelope without content = "text"",
+  "toEnvelope validUntil CborDate = "request(ARID(c66be27d)) [ 'body': «\\"f\\"»,"",
+  "fromEnvelope now CborDate = ARID(c66be27d)",
 ]
 `;
 
@@ -68,6 +70,7 @@ exports[`freeze > wrapped-error messages 1`] = `
   "unsigned message = throw:GstpError[Envelope]|cannot unwrap an envelope that was not wrapped",
   "numeric event content read as text = throw:GstpError[Envelope]|general error: Failed to parse content",
   "sender that is not a document = throw:GstpError[XID]|CBOR error",
+  "no sender = throw:GstpError[Envelope]|no assertion matches the predicate",
 ]
 `;
 
@@ -989,21 +992,93 @@ open(518684c5)=summary=SealedRequest(id: c66be27d, body: «"test"» [ ❰"big"�
 throw:StateOnFailedResponse|Cannot set state on a failed response",
   "## response earlyFailure from 518684c5 state-on-failure → 7eb559bb
 throw:StateOnFailedResponse|Cannot set state on a failed response",
+  "## response failure "r" from 518684c5 → 7eb559bb
+throw:Envelope[General]|general error: Cannot set result on a failed response",
+  "## response earlyFailure "r" from 518684c5 → 7eb559bb
+throw:Envelope[General]|general error: Cannot set result on a failed response",
+  "## response success !"e" from 518684c5 → 7eb559bb
+throw:Envelope[General]|general error: Cannot set error on a successful response",
+  "## continuation nextPage(fromRecord=100,toRecord=199) id until 2024-07-04T11:12:11Z vs elided ×1
+format={
+    «"nextPage"» [
+        ❰"fromRecord"❱: 100
+        ❰"toRecord"❱: 199
+    ]
+} [
+    'id': ARID(c66be27d)
+    'validUntil': 2024-07-04T11:12:11Z
+]
+open(id,-,-)=state=«"nextPage"» [ ❰"fromRecord"❱: 100, ❰"toRecord"❱: 199 ]; id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; validUntil=2024-07-04T11:12:11.000Z; equals=true; elidedEquals=false",
+  "## continuation "s" to 518684c5 vs elided ×1
+format=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(-,-,518684c5)=state="s"; id=-; validUntil=-; equals=true; elidedEquals=false",
+  "## hand-built request by 7eb559bb senders=document → 518684c5 ×1
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=throw:MissingPeerContinuation|requests must contain a peer continuation",
+  "## hand-built response by 7eb559bb senders=document → 518684c5 ×1
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedResponse(id: c66be27d, result: 'OK', state: None, peer_continuation: None); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=-",
+  "## hand-built event by 7eb559bb senders=document → 518684c5 ×1
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=summary=SealedEvent(id: c66be27d, content: "x", state: None, peer_continuation: None); id=c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc; sender=71274df1; state=-; peer=-",
+  "## hand-built request by 7eb559bb senders=none → 518684c5 ×1
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=throw:Envelope[NonexistentPredicate]|no assertion matches the predicate",
+  "## hand-built response by 7eb559bb senders=document+text → 518684c5 ×1
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=throw:Envelope[AmbiguousPredicate]|more than one assertion matches the predicate",
+  "## hand-built event by 7eb559bb senders=text → 518684c5 ×1
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=throw:XID[Cbor]|CBOR error",
+  "## hand-built request by 7eb559bb senders=document unsigned → 518684c5 ×1
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=throw:Envelope[NotWrapped]|cannot unwrap an envelope that was not wrapped",
+  "## hand-built response by 7eb559bb senders=document plain-continuation → 518684c5 ×1
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=throw:PeerContinuationNotEncrypted|peer continuation must be encrypted",
+  "## hand-built event by 7eb559bb senders=none unsigned → 518684c5 ×1
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(518684c5)=throw:Envelope[NotWrapped]|cannot unwrap an envelope that was not wrapped",
+  "## hand-built request by 7eb559bb senders=document → 518684c5 ×1
+sealed=ENCRYPTED [
+    'hasRecipient': SealedMessage
+]
+open(00000000)=throw:Envelope[UnknownRecipient]|unknown recipient",
   "## domain continuation.validUntil.nan (J3)
 throw:TypeError",
-  "## domain continuation.validFor.nan (J3)
+  "## domain continuation.validDuration.nan (J3)
 throw:TypeError",
   "## domain request.id.string (J3)
 throw:TypeError",
   "## domain request.withDate.nan (J3)
 throw:TypeError",
-  "## domain open.noRecipient (J3)
+  "## domain fromEnvelope.noRecipient (J3)
 throw:TypeError",
-  "## domain event.open.noContent (J4)
+  "## domain event.fromEnvelope.noContent (J4)
 string:text",
-  "## domain seal.validUntil.cborDate (J4)
+  "## domain toEnvelope.validUntil.cborDate (J4)
 request(ARID(c66be27d)) [",
-  "## domain open.now.cborDate (J4)
+  "## domain fromEnvelope.now.cborDate (J4)
 c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc",
   "## request test(param1=42,param2="hello") from 7eb559bb state peer until 2024-07-04T11:12:11Z pq → 518684c5
 signed={

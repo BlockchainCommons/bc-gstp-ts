@@ -3,8 +3,9 @@
  * reference's request/response/event cycle and multi-recipient cases,
  * continuations plain/encrypted/expired/mis-identified, every error path
  * of opening (unsigned, no peer continuation, unencrypted peer
- * continuation, wrong recipient, expired, wrong id), and generated
- * exchanges.
+ * continuation, wrong recipient, expired, wrong id), messages assembled by
+ * hand with a `'sender'` missing, repeated or not a document, the setters
+ * the reference panics on, structural equality, and generated exchanges.
  */
 import { NON_RECIPIENT, type Recipe, type Value } from "../vectors/recipes";
 
@@ -348,16 +349,68 @@ export function* hand(): Generator<Recipe> {
       open: [],
     };
   }
+  // A result on a response that is not a success, an error on a success:
+  // the reference panics, this library rejects.
+  const response: Omit<Extract<Recipe, { k: "response" }>, "kind"> = {
+    k: "response",
+    sender: SERVER,
+    id: REQUEST_ID,
+    recipients: [CLIENT],
+    open: [],
+  };
+  yield { ...response, kind: "failure", result: "r" };
+  yield { ...response, kind: "earlyFailure", result: "r" };
+  yield { ...response, kind: "success", error: "e" };
+  // Equality is structural: a continuation whose state is elided is not equal to the original.
+  yield {
+    k: "continuation",
+    state: serverState,
+    id: REQUEST_ID,
+    validUntil: plus(60),
+    elided: true,
+    open: [{ expectedId: REQUEST_ID }],
+  };
+  yield {
+    k: "continuation",
+    state: "s",
+    encryptTo: SERVER,
+    elided: true,
+    open: [{ recipient: SERVER }],
+  };
+  // Messages assembled by hand: a well-formed body of each kind, then the
+  // `'sender'` missing, repeated or a text leaf, an unsigned body, a plain
+  // sender continuation, and a stranger opening.
+  type HandBuilt = Extract<Recipe, { k: "sealedEnvelope" }>;
+  const handBuilt = (extra: Partial<HandBuilt> = {}): Recipe => ({
+    k: "sealedEnvelope",
+    as: "request",
+    id: REQUEST_ID,
+    by: CLIENT,
+    senders: ["document"],
+    recipients: [SERVER],
+    open: [{ recipient: SERVER, now: NOW }],
+    ...extra,
+  });
+  yield handBuilt();
+  yield handBuilt({ as: "response" });
+  yield handBuilt({ as: "event" });
+  yield handBuilt({ senders: [] });
+  yield handBuilt({ as: "response", senders: ["document", "text"] });
+  yield handBuilt({ as: "event", senders: ["text"] });
+  yield handBuilt({ sign: false });
+  yield handBuilt({ as: "response", plainSenderContinuation: true });
+  yield handBuilt({ as: "event", senders: [], sign: false });
+  yield handBuilt({ open: [{ recipient: AUDITOR }] });
   // The JavaScript input domain.
   for (const [name, cls] of [
     ["continuation.validUntil.nan", "J3"],
-    ["continuation.validFor.nan", "J3"],
+    ["continuation.validDuration.nan", "J3"],
     ["request.id.string", "J3"],
     ["request.withDate.nan", "J3"],
-    ["open.noRecipient", "J3"],
-    ["event.open.noContent", "J4"],
-    ["seal.validUntil.cborDate", "J4"],
-    ["open.now.cborDate", "J4"],
+    ["fromEnvelope.noRecipient", "J3"],
+    ["event.fromEnvelope.noContent", "J4"],
+    ["toEnvelope.validUntil.cborDate", "J4"],
+    ["fromEnvelope.now.cborDate", "J4"],
   ] as const) {
     yield { k: "domain", case: name, cls };
   }

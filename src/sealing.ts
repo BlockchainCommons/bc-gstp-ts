@@ -32,8 +32,8 @@ import {
   expectEnvelope,
 } from "./guards";
 
-/** What `seal` takes on a sealed request, response or event. */
-export interface SealOptions {
+/** What `toEnvelope` takes on a sealed request, response or event. */
+export interface ToEnvelopeOptions {
   /** Signs the message; the sender's private keys, typically. */
   signer?: Signer | undefined;
   /** Encrypts the signed message to each recipient's encryption key. */
@@ -42,8 +42,8 @@ export interface SealOptions {
   validUntil?: DateInput | undefined;
 }
 
-/** What `open` takes on a sealed request, response or event. */
-export interface OpenOptions {
+/** What `fromEnvelope` takes on a sealed request, response or event. */
+export interface FromEnvelopeOptions {
   /** The private keys of the recipient opening the message. */
   recipient: Decrypter;
   /** The request id the recipient's continuation must answer to. */
@@ -52,9 +52,9 @@ export interface OpenOptions {
   now?: DateInput | undefined;
 }
 
-/** Same digest, or both absent. */
+/** Identical (same digest and structure, as the reference's `PartialEq` on `Envelope`), or both absent. */
 export const envelopesEqual = (a: Envelope | undefined, b: Envelope | undefined): boolean =>
-  a === undefined || b === undefined ? a === b : a.digest().equals(b.digest());
+  a === undefined || b === undefined ? a === b : a.isIdenticalTo(b);
 
 // Sealing ------------------------------------------------------------------------
 
@@ -77,7 +77,7 @@ export function sealBody(
   sender: XIDDocument,
   senderContinuation: Envelope | undefined,
   peerContinuation: Envelope | undefined,
-  { signer, recipients }: SealOptions,
+  { signer, recipients }: ToEnvelopeOptions,
 ): Envelope {
   let result = body.addAssertion(SENDER, sender.toEnvelope());
   if (senderContinuation !== undefined) {
@@ -111,15 +111,17 @@ export interface OpenedBody {
 }
 
 /**
- * Decrypts to the recipient, reads the sender (`XID`), verifies the
- * sender's signature (`SenderMissingVerificationKey`, `Envelope`), checks
+ * Decrypts to the recipient, reads the sender (`Envelope` when the
+ * `'sender'` assertion is missing or repeated, `XID` when its document
+ * does not parse), verifies the sender's signature
+ * (`SenderMissingVerificationKey`, `Envelope`), checks
  * the sender continuation (`PeerContinuationNotEncrypted`;
  * `MissingPeerContinuation` when `requirePeer`), and opens the recipient's
  * continuation with the recipient's keys, expected id and clock.
  */
 export function openBody(
   sealed: Envelope,
-  { recipient, expectedId, now }: OpenOptions,
+  { recipient, expectedId, now }: FromEnvelopeOptions,
   requirePeer: boolean,
 ): OpenedBody {
   expectEnvelope(sealed, "sealed");
@@ -130,9 +132,10 @@ export function openBody(
   // An unsigned message does not unwrap: an envelope failure, as the
   // reference reports it; only the sender document's parse is an XID failure.
   const unwrapped = guarded(() => signed.unwrap());
+  const senderEnvelope = guarded(() => unwrapped.objectForPredicate(SENDER));
   let sender: XIDDocument;
   try {
-    sender = XIDDocument.fromEnvelope(unwrapped.objectForPredicate(SENDER));
+    sender = XIDDocument.fromEnvelope(senderEnvelope);
   } catch (e) {
     throw GstpError.xid(e);
   }
@@ -150,7 +153,7 @@ export function openBody(
     envelope.optionalObjectForPredicate(RECIPIENT_CONTINUATION),
   );
   if (ownContinuation !== undefined) {
-    state = Continuation.open(ownContinuation, { recipient, expectedId, now }).state;
+    state = Continuation.fromEnvelope(ownContinuation, { recipient, expectedId, now }).state;
   }
   return { envelope, sender, peerContinuation, state };
 }

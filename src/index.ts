@@ -23,10 +23,15 @@ export {
   Continuation,
   type ContinuationInput,
   type ContinuationCheck,
-  type OpenContinuationOptions,
+  type ContinuationFromEnvelopeOptions,
 } from "./continuation";
 export { type DateInput } from "./guards";
-export { type SealOptions, type OpenOptions } from "./sealing";
+export { type ToEnvelopeOptions, type FromEnvelopeOptions } from "./sealing";
 export { SealedRequest, type SealedRequestInput } from "./sealed-request";
-export { SealedResponse, type SealedResponseInput } from "./sealed-response";
-export { SealedEvent, type SealedEventInput, type OpenEventOptions } from "./sealed-event";
+export {
+  SealedResponse,
+  type SealedResponseInput,
+  type ResponseOk,
+  type ResponseErr,
+} from "./sealed-response";
+export { SealedEvent, type SealedEventInput, type FromEnvelopeEventOptions } from "./sealed-event";

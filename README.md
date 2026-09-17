@@ -45,7 +45,7 @@ const id = ARID.random();
 const request = SealedRequest.from("getRecords", { id, sender: client, state: "page 1" })
   .withParameter("from", 100)
   .withParameter("to", 199);
-const sealed = request.seal({
+const sealed = request.toEnvelope({
   signer: clientKeys,
   recipients: [server],
   validUntil: new Date(Date.now() + 60_000), // or a CborDate
@@ -54,30 +54,38 @@ const sealed = request.seal({
 // The server opens it (signature, then the continuations, in the reference's
 // order), reads the parameters through decoders, and answers, handing the
 // client's continuation back.
-const opened = SealedRequest.open(sealed, { recipient: serverKeys, now: new Date() });
-const from = opened.extractParameter("from", expectInteger); // 100
+const opened = SealedRequest.fromEnvelope(sealed, { recipient: serverKeys, now: new Date() });
+const from = opened.extractObjectForParameter("from", expectInteger); // 100
 const response = SealedResponse.success(opened.id, {
   sender: server,
   peerContinuation: opened.peerContinuation,
-}).withResult(`records ${from}-${opened.extractParameter("to", expectInteger)}`);
-const sealedResponse = response.seal({ signer: serverKeys, recipients: [client] });
+}).withResult(`records ${from}-${opened.extractObjectForParameter("to", expectInteger)}`);
+const sealedResponse = response.toEnvelope({ signer: serverKeys, recipients: [client] });
 
 // The client's continuation must answer to the request id.
-const answer = SealedResponse.open(sealedResponse, { recipient: clientKeys, expectedId: id });
+const answer = SealedResponse.fromEnvelope(sealedResponse, {
+  recipient: clientKeys,
+  expectedId: id,
+});
+answer.ok?.id.equals(id); // true
 answer.extractResult(expectText); // "records 100-199"
 answer.state?.expectString(); // "page 1"
 
 // Every rejection is a GstpError with the reference's code; an envelope or
 // xid failure is transparent: its message, `cause` and `details.inner`.
 try {
-  SealedRequest.open(sealed, { recipient: clientKeys });
+  SealedRequest.fromEnvelope(sealed, { recipient: clientKeys });
 } catch (e) {
   if (GstpError.isGstpError(e) && e.is("Envelope")) e.details.inner; // "UnknownRecipient"
 }
 ```
 
-`open` checks the continuation's deadline only against the `now` you pass,
+`fromEnvelope` checks the continuation's deadline only against the `now` you pass,
 as the reference's `Option<Date>`: pass the current time to enforce expiry.
+A message copies its sender document when it is built, as the reference
+does, so a document edited afterwards does not reach the `'sender'`
+assertion. `equals` is structural, as the reference's `PartialEq`: an
+envelope and its elided form share a digest and are not equal.
 Every argument is checked at the boundary: a value that is not what the API
 names (a non-`ARID` id, a `Date` without a time, a missing recipient, a plain
 object where a document or envelope goes) is a `TypeError` naming the
@@ -105,7 +113,7 @@ Runnable examples live in the [`examples/`](https://github.com/BlockchainCommons
 To build and work on this library, you'll need the following tools:
 
 - [Node.js](https://nodejs.org/) >= 22.12 - JavaScript runtime.
-- [Bun](https://bun.sh/) - used in CI to install dependencies and run scripts (any Node-compatible package manager also works).
+- [Bun](https://bun.sh/) - used to install dependencies and run scripts (any node package manager works).
 - [TypeScript](https://www.typescriptlang.org/) >= 5.7 - language and type checker.
 
 ### Derived from ...
@@ -113,7 +121,7 @@ To build and work on this library, you'll need the following tools:
 This `bc-gstp-ts` project is either derived from or was inspired by:
 
 - [BlockchainCommons/gstp-rust](https://github.com/BlockchainCommons/gstp-rust) - The reference Rust implementation, by [Wolf McNally](https://github.com/wolfmcnally).
-- [paritytech/bcts](https://github.com/paritytech/bcts) - A TypeScript port covering many Blockchain Commons' implementations, by [Parity Technologies](https://github.com/paritytech).
+- [paritytech/bcts](https://github.com/paritytech/bcts) - A TypeScript port of many Blockchain Commons' specs, by [Parity Technologies](https://github.com/paritytech).
 
 ## Financial Support
 
