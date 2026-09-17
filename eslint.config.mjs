@@ -5,8 +5,6 @@ import { resolve } from "node:path";
 
 /*
  * Strict, type-checked ESLint flat config for the @blockchaincommons/gstp library.
- * (Migrated from the @bcts/eslint shared config, inlined here so the package
- * is self-contained.)
  */
 const project = resolve(process.cwd(), "./tsconfig.json");
 
@@ -144,7 +142,7 @@ export default [
   // Executable entry points inside a library: these run in Node.js and are
   // expected to use process, console and friends.
   {
-    files: ["src/bin/**/*.ts", "src/cmd/**/*.ts", "src/cli.ts", "src/main.ts"],
+    files: ["src/main.ts"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {

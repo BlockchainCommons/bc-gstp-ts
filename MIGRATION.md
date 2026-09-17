@@ -78,15 +78,3 @@ and `tests/rust-validation` replays the golden vectors against `gstp-rust`
 `@blockchaincommons/dcbor-compat` and `rand` are not dependencies.
 Formatting needs `registerTags()` from `@blockchaincommons/envelope/format`
 once, as the reference's tests call `bc_envelope::register_tags()`.
-
-## 5. Node and TypeScript floors
-
-| | `@bcts/gstp` | `@blockchaincommons/gstp` |
-|---|---|---|
-| Node | `>= 18` | `>= 22.12` |
-| TypeScript (consumers) | 6.x | `>= 5.7` |
-
-`@bcts/gstp` shipped an additional IIFE bundle through the `browser` field.
-That build is dropped: use the ESM entry (`import`) or the CJS entry
-(`require`); both are declared in `exports` and validated in CI by `publint`
-and `@arethetypeswrong/cli`.
