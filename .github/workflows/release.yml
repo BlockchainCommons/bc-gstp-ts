@@ -45,7 +45,7 @@ jobs:
         run: bun run lint:pkg
 
       - name: Publish to NPM
-        run: npm publish --provenance --tag beta
+        run: npm publish --tag beta
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
