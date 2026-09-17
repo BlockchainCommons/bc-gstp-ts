@@ -25,8 +25,8 @@ import { Continuation } from "./continuation";
 import { GstpError, guarded } from "./error";
 import { expectArid, expectDocument, expectEnvelope, expectInstance } from "./guards";
 import {
-  type OpenOptions,
-  type SealOptions,
+  type FromEnvelopeOptions,
+  type ToEnvelopeOptions,
   envelopesEqual,
   openBody,
   sealBody,
@@ -35,12 +35,28 @@ import {
 
 /** What the response constructors take besides the id. */
 export interface SealedResponseInput {
-  /** The sender's document; its encryption key seals the sender's state, its signing key signs. */
+  /** The sender's document, copied at construction; its encryption key seals the sender's state, its signing key signs. */
   sender: XIDDocument;
   /** The sender's own state, returned in the reply; a response that is not a success carries none. */
   state?: EnvelopeInput | undefined;
   /** The peer's continuation, as received, handed back. */
   peerContinuation?: Envelope | undefined;
+}
+
+/** What `ok` gives on a success: the reference's `(ARID, Envelope)` pair. */
+export interface ResponseOk {
+  /** The request id. */
+  readonly id: ARID;
+  /** The `'result'`. */
+  readonly result: Envelope;
+}
+
+/** What `err` gives on a failure: the reference's `(Option<ARID>, Envelope)` pair. */
+export interface ResponseErr {
+  /** The request id; `undefined` on an early failure. */
+  readonly id: ARID | undefined;
+  /** The `'error'`. */
+  readonly error: Envelope;
 }
 
 /** A response with its sender, state and the peer's continuation. */
@@ -66,9 +82,13 @@ export class SealedResponse implements ToEnvelope {
     response: Response,
     { sender, state, peerContinuation }: SealedResponseInput,
   ): SealedResponse {
-    expectDocument(sender, "sender");
     if (peerContinuation !== undefined) expectEnvelope(peerContinuation, "peerContinuation");
-    return new SealedResponse(response, sender, undefined, peerContinuation).withState(state);
+    return new SealedResponse(
+      response,
+      expectDocument(sender, "sender").clone(),
+      undefined,
+      peerContinuation,
+    ).withState(state);
   }
 
   /** A successful response to request `id`; an id that is not an `ARID` is a `TypeError`. */
@@ -92,14 +112,22 @@ export class SealedResponse implements ToEnvelope {
 
   // Body ----------------------------------------------------------------------
 
-  /** With a `'result'` (`undefined` leaves the response unchanged). */
+  /**
+   * With a `'result'`; `undefined` sets a `null` result, as the reference's
+   * `with_optional_result(None)`. `Envelope[General]` on a response that is
+   * not a success, where the reference panics.
+   */
   withResult(result: EnvelopeInput | undefined): SealedResponse {
-    return this.with(this._response.withOptionalResult(result));
+    return this.with(guarded(() => this._response.withOptionalResult(result)));
   }
 
-  /** With an `'error'` (`undefined` leaves the response unchanged). */
+  /**
+   * With an `'error'`; `undefined` leaves the response unchanged, as the
+   * reference's `with_optional_error(None)`. `Envelope[General]` on a
+   * success, where the reference panics.
+   */
   withError(error: EnvelopeInput | undefined): SealedResponse {
-    return this.with(this._response.withOptionalError(error));
+    return this.with(guarded(() => this._response.withOptionalError(error)));
   }
 
   /** The envelope response. */
@@ -115,6 +143,18 @@ export class SealedResponse implements ToEnvelope {
   /** Whether the response is a failure (early or not). */
   get isErr(): boolean {
     return this._response.isErr();
+  }
+
+  /** The request id and the `'result'` of a success; `undefined` on a failure. */
+  get ok(): ResponseOk | undefined {
+    if (!this._response.isOk()) return undefined;
+    return { id: this._response.expectId(), result: this._response.result };
+  }
+
+  /** The request id and the `'error'` of a failure; `undefined` on a success. */
+  get err(): ResponseErr | undefined {
+    if (this._response.isOk()) return undefined;
+    return { id: this._response.id, error: this._response.error };
   }
 
   /** The request id; `undefined` on an early failure. */
@@ -186,13 +226,14 @@ export class SealedResponse implements ToEnvelope {
   /**
    * The response with `'sender'`, the sender's continuation when there is
    * state (with `validUntil`, encrypted to the sender) and the peer
-   * continuation; signed by `signer` and encrypted to `recipients`.
+   * continuation; signed by `signer` and encrypted to `recipients`. With
+   * no options: unsigned, unsealed.
    */
-  seal({ signer, recipients, validUntil }: SealOptions = {}): Envelope {
+  toEnvelope({ signer, recipients, validUntil }: ToEnvelopeOptions = {}): Envelope {
     let senderContinuation: Envelope | undefined;
     if (this._state !== undefined) {
       const continuation = Continuation.from({ state: this._state, validUntil });
-      senderContinuation = continuation.seal(senderEncryptionKey(this._sender));
+      senderContinuation = continuation.toEnvelope(senderEncryptionKey(this._sender));
     }
     return sealBody(
       this._response.toEnvelope(),
@@ -203,18 +244,13 @@ export class SealedResponse implements ToEnvelope {
     );
   }
 
-  /** `seal` with nothing: unsigned, unsealed. */
-  toEnvelope(): Envelope {
-    return this.seal();
-  }
-
   /**
    * Decrypts to the recipient, verifies the sender's signature, checks
    * the sender continuation (when present it must be encrypted), opens
    * the recipient's own continuation and parses the response; a `null`
    * state reads as no state.
    */
-  static open(sealed: Envelope, options: OpenOptions): SealedResponse {
+  static fromEnvelope(sealed: Envelope, options: FromEnvelopeOptions): SealedResponse {
     const { envelope, sender, peerContinuation, state } = openBody(sealed, options, false);
     const response = guarded(() => Response.fromEnvelope(envelope));
     return new SealedResponse(
@@ -232,7 +268,7 @@ export class SealedResponse implements ToEnvelope {
     return `SealedResponse(${this._response.summary()}, state: ${stateStr}, peer_continuation: ${peerStr})`;
   }
 
-  /** Same response, sender document, state digest and peer continuation digest, as the reference's equality. */
+  /** Same response and sender document, identical state and peer continuation (digest and structure), as the reference's `PartialEq`. */
   equals(other: SealedResponse): boolean {
     expectInstance(other, SealedResponse, "other");
     return (

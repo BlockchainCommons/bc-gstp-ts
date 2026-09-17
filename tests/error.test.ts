@@ -86,12 +86,12 @@ describe("GstpError", () => {
   });
 
   it("wraps envelope and xid errors transparently", () => {
-    const sealed = SealedRequest.from("f", { id, sender: client }).seal({
+    const sealed = SealedRequest.from("f", { id, sender: client }).toEnvelope({
       signer: must(client.inceptionPrivateKeys),
       recipients: [server],
     });
     const wrongRecipient = thrown(() =>
-      SealedRequest.open(sealed, { recipient: must(stranger.inceptionPrivateKeys) }),
+      SealedRequest.fromEnvelope(sealed, { recipient: must(stranger.inceptionPrivateKeys) }),
     );
     expect(GstpError.isGstpError(wrongRecipient)).toBe(true);
     const e = wrongRecipient as GstpError;
@@ -111,12 +111,30 @@ describe("GstpError", () => {
       [must(server.encryptionKey)],
     );
     const xid = thrown(() =>
-      SealedRequest.open(bogusSender, { recipient: must(server.inceptionPrivateKeys) }),
+      SealedRequest.fromEnvelope(bogusSender, { recipient: must(server.inceptionPrivateKeys) }),
     ) as GstpError;
     expect(xid.is("XID")).toBe(true);
     if (xid.is("XID")) expect(xid.details.inner).toBe("Cbor");
     expect(xid.message).toBe("CBOR error");
     expect(XIDError.isXIDError(xid.cause)).toBe(true);
+
+    // The lookup of the `'sender'` assertion is an envelope failure; only
+    // the document's parse is an xid failure.
+    const bodyWith = (...senders: (Envelope | string)[]): Envelope => {
+      let body = Envelope.from("body");
+      for (const sender of senders) body = body.addAssertion(SENDER, sender);
+      return encryptSubjectToRecipients(sign(body, must(client.inceptionPrivateKeys)).wrap(), [
+        must(server.encryptionKey),
+      ]);
+    };
+    const open = (sealed: Envelope): unknown =>
+      thrown(() =>
+        SealedRequest.fromEnvelope(sealed, { recipient: must(server.inceptionPrivateKeys) }),
+      );
+    const noSender = open(bodyWith()) as GstpError;
+    expect(noSender.is("Envelope") && noSender.details.inner).toBe("NonexistentPredicate");
+    const twoSenders = open(bodyWith(client.toEnvelope(), "nope")) as GstpError;
+    expect(twoSenders.is("Envelope") && twoSenders.details.inner).toBe("AmbiguousPredicate");
   });
 
   it("names the failed accessor's condition", () => {
@@ -130,6 +148,16 @@ describe("GstpError", () => {
     expect(early.is("Envelope") && early.details.inner).toBe("General");
     const state = thrown(() => failure.withState("x")) as GstpError;
     expect(state.is("StateOnFailedResponse")).toBe(true);
+    // The setters the reference panics on are envelope failures here.
+    const resultOnFailure = thrown(() => failure.withResult("r")) as GstpError;
+    expect(resultOnFailure.is("Envelope") && resultOnFailure.details.inner).toBe("General");
+    expect(resultOnFailure.message).toBe("general error: Cannot set result on a failed response");
+    expect(GstpError.isGstpError(thrown(() => failure.withResult(undefined)))).toBe(true);
+    const errorOnSuccess = thrown(() =>
+      SealedResponse.success(id, { sender: client }).withError("e"),
+    ) as GstpError;
+    expect(errorOnSuccess.is("Envelope") && errorOnSuccess.details.inner).toBe("General");
+    expect(errorOnSuccess.message).toBe("general error: Cannot set error on a successful response");
   });
 
   it("freezes the tables and the details", () => {

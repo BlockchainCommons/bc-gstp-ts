@@ -43,13 +43,13 @@ describe("dates keep their precision", () => {
     const sealed = SealedRequest.from("test", { id, sender })
       .withDate(precise)
       .withParameter("when", precise)
-      .seal({ signer: senderPrivateKeys, recipients: [recipient] });
-    const opened = SealedRequest.open(sealed, { recipient: recipientPrivateKeys });
+      .toEnvelope({ signer: senderPrivateKeys, recipients: [recipient] });
+    const opened = SealedRequest.fromEnvelope(sealed, { recipient: recipientPrivateKeys });
     expect(opened.cborDate?.equals(precise)).toBe(true);
     expect(opened.date?.getTime()).toBe(preciseView.getTime());
-    expect(opened.extractParameter("when", (c) => CborDate.fromTaggedCbor(c)).equals(precise)).toBe(
-      true,
-    );
+    expect(
+      opened.extractObjectForParameter("when", (c) => CborDate.fromTaggedCbor(c)).equals(precise),
+    ).toBe(true);
     expect(hex(opened.request.body.objectForParameter("when").expectLeaf().toData())).toBe(
       hex(precise.taggedCbor().toData()),
     );
@@ -58,8 +58,8 @@ describe("dates keep their precision", () => {
   it("a sealed event keeps a sub-millisecond date", () => {
     const sealed = SealedEvent.from("test", { id, sender })
       .withDate(precise)
-      .seal({ signer: senderPrivateKeys, recipients: [recipient] });
-    const opened = SealedEvent.open(sealed, { recipient: recipientPrivateKeys });
+      .toEnvelope({ signer: senderPrivateKeys, recipients: [recipient] });
+    const opened = SealedEvent.fromEnvelope(sealed, { recipient: recipientPrivateKeys });
     expect(opened.cborDate?.equals(precise)).toBe(true);
     expect(opened.date?.getTime()).toBe(preciseView.getTime());
   });
@@ -69,7 +69,7 @@ describe("dates keep their precision", () => {
     const envelope = continuation.toEnvelope();
     const leaf = envelope.objectForPredicate(VALID_UNTIL).expectLeaf();
     expect(hex(leaf.toData())).toBe(hex(precise.taggedCbor().toData()));
-    const opened = Continuation.open(envelope);
+    const opened = Continuation.fromEnvelope(envelope);
     expect(opened.cborValidUntil?.equals(precise)).toBe(true);
     expect(opened.validUntil?.getTime()).toBe(preciseView.getTime());
     expect(opened.equals(continuation)).toBe(true);
@@ -78,13 +78,13 @@ describe("dates keep their precision", () => {
   it("a raw 1(1.0000001) deadline is compared exactly", () => {
     const deadline = CborDate.fromEpochSeconds(1.0000001);
     const envelope = Envelope.from("state").wrap().addAssertion(VALID_UNTIL, deadline);
-    const opened = Continuation.open(envelope);
+    const opened = Continuation.fromEnvelope(envelope);
     expect(opened.cborValidUntil?.equals(deadline)).toBe(true);
-    expect(opened.isValidAt(new Date(1000))).toBe(true);
-    expect(opened.isValidAt(CborDate.fromEpochSeconds(1.00000005))).toBe(true);
-    expect(opened.isValidAt(CborDate.fromEpochSeconds(1.0000001))).toBe(false);
-    expect(opened.isValidAt(new Date(1001))).toBe(false);
-    expect(() => Continuation.open(envelope, { now: new Date(1001) })).toThrow(
+    expect(opened.isValidDate(new Date(1000))).toBe(true);
+    expect(opened.isValidDate(CborDate.fromEpochSeconds(1.00000005))).toBe(true);
+    expect(opened.isValidDate(CborDate.fromEpochSeconds(1.0000001))).toBe(false);
+    expect(opened.isValidDate(new Date(1001))).toBe(false);
+    expect(() => Continuation.fromEnvelope(envelope, { now: new Date(1001) })).toThrow(
       expect.objectContaining({ code: "ContinuationExpired" }),
     );
   });

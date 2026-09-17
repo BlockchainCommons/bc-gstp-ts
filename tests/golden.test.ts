@@ -101,7 +101,7 @@ const request = (): SealedRequest =>
     .withParameter("dup", 2)
     .withParameter("nested", new Expression(Function.named("g")));
 const sealedTo = (recipient: XIDDocument, signed = true): Envelope =>
-  SealedRequest.from("f", { id, sender: client }).seal({
+  SealedRequest.from("f", { id, sender: client }).toEnvelope({
     ...(signed ? { signer: keysOf(client) } : {}),
     recipients: [recipient],
   });
@@ -113,24 +113,27 @@ describe("freeze", () => {
     expect(
       rows({
         "wrapped id, opened with it": () =>
-          Continuation.open(wrapped(ID, Envelope.from(id).wrap()), { expectedId: id }).validId,
+          Continuation.fromEnvelope(wrapped(ID, Envelope.from(id).wrap()), { expectedId: id }).id,
         "id with an assertion, opened with another id": () =>
-          Continuation.open(wrapped(ID, Envelope.from(id).addAssertion("x", 1)), {
+          Continuation.fromEnvelope(wrapped(ID, Envelope.from(id).addAssertion("x", 1)), {
             expectedId: otherId,
-          }).validId,
+          }).id,
         "wrapped validUntil, opened later": () =>
-          Continuation.open(wrapped(VALID_UNTIL, Envelope.from(CborDate.fromDate(now)).wrap()), {
-            now: later,
-          }).validUntil,
+          Continuation.fromEnvelope(
+            wrapped(VALID_UNTIL, Envelope.from(CborDate.fromDate(now)).wrap()),
+            {
+              now: later,
+            },
+          ).validUntil,
         "validUntil that is not a date": () =>
-          Continuation.open(wrapped(VALID_UNTIL, Envelope.from("not a date"))),
+          Continuation.fromEnvelope(wrapped(VALID_UNTIL, Envelope.from("not a date"))),
         "id that is not an ARID": () =>
-          Continuation.open(wrapped(ID, Envelope.from("not an arid"))),
+          Continuation.fromEnvelope(wrapped(ID, Envelope.from("not an arid"))),
         "two ids": () =>
-          Continuation.open(
+          Continuation.fromEnvelope(
             Envelope.from("s").wrap().addAssertion(ID, id).addAssertion(ID, otherId),
           ),
-        "not wrapped": () => Continuation.open(Envelope.from("s")),
+        "not wrapped": () => Continuation.fromEnvelope(Envelope.from("s")),
       }),
     ).toMatchSnapshot();
   });
@@ -140,19 +143,26 @@ describe("freeze", () => {
     expect(
       rows({
         "parameter(dup)": () => r.parameter("dup"),
-        "extractParameter(dup)": () => r.extractParameter("dup", expectInteger),
-        "extractParameters(dup)": () =>
-          r.extractParameters("dup", expectInteger).map(render).join(","),
-        "extractParameter(nested)": () => r.extractParameter("nested", expectText),
-        "extractParameter(missing)": () => r.extractParameter("missing", expectText),
-        "extractOptionalParameter(missing)": () =>
-          r.extractOptionalParameter("missing", expectText),
-        "extractParameters(p, expectInteger)[0]": () => r.extractParameters("p", expectInteger)[0],
-        "extractParameter(big, expectInteger)": () => r.extractParameter("big", expectInteger),
-        "extractParameter(p, expectText)": () => r.extractParameter("p", expectText),
+        "extractObjectForParameter(dup)": () => r.extractObjectForParameter("dup", expectInteger),
+        "extractObjectsForParameter(dup)": () =>
+          r.extractObjectsForParameter("dup", expectInteger).map(render).join(","),
+        "extractObjectForParameter(nested)": () =>
+          r.extractObjectForParameter("nested", expectText),
+        "extractObjectForParameter(missing)": () =>
+          r.extractObjectForParameter("missing", expectText),
+        "extractOptionalObjectForParameter(missing)": () =>
+          r.extractOptionalObjectForParameter("missing", expectText),
+        "extractObjectsForParameter(p, expectInteger)[0]": () =>
+          r.extractObjectsForParameter("p", expectInteger)[0],
+        "extractObjectForParameter(big, expectInteger)": () =>
+          r.extractObjectForParameter("big", expectInteger),
+        "extractObjectForParameter(p, expectText)": () =>
+          r.extractObjectForParameter("p", expectText),
         "objectForParameter(missing)": () => r.objectForParameter("missing"),
         "failure.result": () => SealedResponse.failure(id, { sender: client }).result,
         "success.error": () => SealedResponse.success(id, { sender: client }).error,
+        "failure.withResult": () => SealedResponse.failure(id, { sender: client }).withResult("r"),
+        "success.withError": () => SealedResponse.success(id, { sender: client }).withError("e"),
       }),
     ).toMatchSnapshot();
   });
@@ -165,19 +175,26 @@ describe("freeze", () => {
     expect(
       rows({
         "wrong recipient": () =>
-          SealedRequest.open(sealedTo(server), { recipient: keysOf(stranger) }),
+          SealedRequest.fromEnvelope(sealedTo(server), { recipient: keysOf(stranger) }),
         "unsigned message": () =>
-          SealedRequest.open(sealedTo(server, false), { recipient: keysOf(server) }),
+          SealedRequest.fromEnvelope(sealedTo(server, false), { recipient: keysOf(server) }),
         "numeric event content read as text": () =>
-          SealedEvent.open(
-            SealedEvent.from(7, { id, sender: client }).seal({
+          SealedEvent.fromEnvelope(
+            SealedEvent.from(7, { id, sender: client }).toEnvelope({
               signer: keysOf(client),
               recipients: [server],
             }),
             { recipient: keysOf(server) },
           ),
         "sender that is not a document": () =>
-          SealedRequest.open(bogusSender, { recipient: keysOf(server) }),
+          SealedRequest.fromEnvelope(bogusSender, { recipient: keysOf(server) }),
+        "no sender": () =>
+          SealedRequest.fromEnvelope(
+            encryptSubjectToRecipients(sign(Envelope.from("body"), keysOf(client)).wrap(), [
+              must(server.encryptionKey),
+            ]),
+            { recipient: keysOf(server) },
+          ),
       }),
     ).toMatchSnapshot();
   });
@@ -199,29 +216,30 @@ describe("freeze", () => {
       rows({
         "Continuation.from validUntil NaN": () =>
           Continuation.from({ state: "s", validUntil: new Date(NaN) }),
-        "Continuation.from validFor NaN": () => Continuation.from({ state: "s", validFor: NaN }),
+        "Continuation.from validDuration NaN": () =>
+          Continuation.from({ state: "s", validDuration: NaN }),
         "SealedRequest.from id string": () =>
-          SealedRequest.from("f", { id: "nope" as never, sender: client }).seal(),
+          SealedRequest.from("f", { id: "nope" as never, sender: client }).toEnvelope(),
         "withDate NaN": () =>
           SealedRequest.from("f", { id, sender: client }).withDate(new Date(NaN)),
-        "open without recipient": () => SealedRequest.open(sealed, {} as never),
-        "SealedEvent.open without content": () =>
-          SealedEvent.open(
-            SealedEvent.from("text", { id, sender: client }).seal({
+        "fromEnvelope without recipient": () => SealedRequest.fromEnvelope(sealed, {} as never),
+        "SealedEvent.fromEnvelope without content": () =>
+          SealedEvent.fromEnvelope(
+            SealedEvent.from("text", { id, sender: client }).toEnvelope({
               signer: keysOf(client),
               recipients: [server],
             }),
             { recipient: keysOf(server) },
           ).content,
-        "seal validUntil CborDate": () =>
+        "toEnvelope validUntil CborDate": () =>
           format(
-            SealedRequest.from("f", { id, sender: client }).seal({
+            SealedRequest.from("f", { id, sender: client }).toEnvelope({
               validUntil: CborDate.fromDate(later) as never,
             }),
             { flat: true },
           ).slice(0, 40),
-        "open now CborDate": () =>
-          SealedRequest.open(sealed, {
+        "fromEnvelope now CborDate": () =>
+          SealedRequest.fromEnvelope(sealed, {
             recipient: keysOf(server),
             now: CborDate.fromDate(now) as never,
           }).id,

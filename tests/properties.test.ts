@@ -47,8 +47,8 @@ describe("properties", () => {
         fc.boolean(),
         (state, validId, validUntil, encrypt) => {
           const c = Continuation.from({ state, validId, validUntil });
-          const sealed = c.seal(encrypt ? must(server.encryptionKey) : undefined);
-          const back = Continuation.open(sealed, {
+          const sealed = c.toEnvelope(encrypt ? must(server.encryptionKey) : undefined);
+          const back = Continuation.fromEnvelope(sealed, {
             recipient: encrypt ? keysOf(server) : undefined,
             expectedId: validId,
           });
@@ -67,10 +67,10 @@ describe("properties", () => {
       fc.property(arbInstant, arbInstant, arbInstant, (deadline, t1, t2) => {
         const c = Continuation.from({ state: "s", validUntil: new Date(deadline) });
         const [earlier, later] = t1 <= t2 ? [t1, t2] : [t2, t1];
-        if (c.isValidAt(new Date(later))) expect(c.isValidAt(new Date(earlier))).toBe(true);
-        expect(c.isValidAt(new Date(deadline))).toBe(false);
-        expect(c.isValidAt(new Date(deadline - 1))).toBe(true);
-        expect(c.isValidAt()).toBe(true);
+        if (c.isValidDate(new Date(later))) expect(c.isValidDate(new Date(earlier))).toBe(true);
+        expect(c.isValidDate(new Date(deadline))).toBe(false);
+        expect(c.isValidDate(new Date(deadline - 1))).toBe(true);
+        expect(c.isValidDate()).toBe(true);
       }),
       { numRuns: 100 },
     );
@@ -79,22 +79,26 @@ describe("properties", () => {
   it("no private key of the sender leaves in any sealed form", () => {
     const id = ARID.fromHex("c66be27dbad7cd095ca77647406d07976dc0f35f0d4d654bb0e96dd227a1e9fc");
     const forms = [
-      SealedRequest.from("f", { id, sender: client, state: "s" }).seal({
+      SealedRequest.from("f", { id, sender: client, state: "s" }).toEnvelope({
         signer: keysOf(client),
       }),
-      SealedResponse.success(id, { sender: client, state: "s" }).seal({ signer: keysOf(client) }),
-      SealedEvent.from("e", { id, sender: client, state: "s" }).seal({ signer: keysOf(client) }),
+      SealedResponse.success(id, { sender: client, state: "s" }).toEnvelope({
+        signer: keysOf(client),
+      }),
+      SealedEvent.from("e", { id, sender: client, state: "s" }).toEnvelope({
+        signer: keysOf(client),
+      }),
     ];
     for (const form of forms) {
       const text = format(form);
       expect(text).not.toMatch(/privateKey|PrivateKeys|ENCRYPTED \[\s*'hasSecret'/);
       expect(text).toContain("'sender': XID(");
     }
-    const sealed = SealedRequest.from("f", { id, sender: client, state: "s" }).seal({
+    const sealed = SealedRequest.from("f", { id, sender: client, state: "s" }).toEnvelope({
       signer: keysOf(client),
       recipients: [server],
     });
-    const opened = SealedRequest.open(sealed, { recipient: keysOf(server) });
+    const opened = SealedRequest.fromEnvelope(sealed, { recipient: keysOf(server) });
     expect(opened.sender.inceptionPrivateKeys).toBeUndefined();
     expect(opened.sender.xid.equals(client.xid)).toBe(true);
   });

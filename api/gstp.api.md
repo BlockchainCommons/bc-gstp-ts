@@ -30,15 +30,14 @@ export class Continuation implements ToEnvelope {
     get cborValidUntil(): CborDate | undefined;
     equals(other: Continuation): boolean;
     static from(input: ContinuationInput): Continuation;
+    static fromEnvelope(sealed: Envelope, input?: ContinuationFromEnvelopeOptions): Continuation;
+    get id(): ARID | undefined;
     isValid(input?: ContinuationCheck): boolean;
-    isValidAt(now?: DateInput): boolean;
+    isValidDate(now?: DateInput): boolean;
     isValidId(id?: ARID): boolean;
-    static open(sealed: Envelope, input?: OpenContinuationOptions): Continuation;
-    seal(recipient?: Encrypter): Envelope;
     get state(): Envelope;
-    toEnvelope(): Envelope;
+    toEnvelope(recipient?: Encrypter): Envelope;
     toString(): string;
-    get validId(): ARID | undefined;
     get validUntil(): Date | undefined;
 }
 
@@ -49,15 +48,34 @@ export interface ContinuationCheck {
 }
 
 // @public
+export interface ContinuationFromEnvelopeOptions {
+    expectedId?: ARID | undefined;
+    now?: DateInput | undefined;
+    recipient?: Decrypter | undefined;
+}
+
+// @public
 export interface ContinuationInput {
     state: EnvelopeInput;
-    validFor?: number | undefined;
+    validDuration?: number | undefined;
     validId?: ARID | undefined;
     validUntil?: DateInput | undefined;
 }
 
 // @public
 export type DateInput = Date | CborDate;
+
+// @public
+export interface FromEnvelopeEventOptions<T extends EnvelopeInput> extends FromEnvelopeOptions {
+    content: (envelope: Envelope) => T;
+}
+
+// @public
+export interface FromEnvelopeOptions {
+    expectedId?: ARID | undefined;
+    now?: DateInput | undefined;
+    recipient: Decrypter;
+}
 
 // @public
 export const GSTP_ERROR_CODES: readonly GstpErrorCode[];
@@ -135,22 +153,15 @@ export type GstpErrorTyped<C extends GstpErrorCode> = GstpError & {
 };
 
 // @public
-export interface OpenContinuationOptions {
-    expectedId?: ARID | undefined;
-    now?: DateInput | undefined;
-    recipient?: Decrypter | undefined;
+export interface ResponseErr {
+    readonly error: Envelope;
+    readonly id: ARID | undefined;
 }
 
 // @public
-export interface OpenEventOptions<T extends EnvelopeInput> extends OpenOptions {
-    content: (envelope: Envelope) => T;
-}
-
-// @public
-export interface OpenOptions {
-    expectedId?: ARID | undefined;
-    now?: DateInput | undefined;
-    recipient: Decrypter;
+export interface ResponseOk {
+    readonly id: ARID;
+    readonly result: Envelope;
 }
 
 // @public
@@ -161,15 +172,14 @@ export class SealedEvent<T extends EnvelopeInput> implements ToEnvelope {
     equals(other: SealedEvent<T>): boolean;
     get event(): Event_2<T>;
     static from<T extends EnvelopeInput>(content: T, input: SealedEventInput): SealedEvent<T>;
+    static fromEnvelope(sealed: Envelope, options: FromEnvelopeOptions): SealedEvent<string>;
+    static fromEnvelope<T extends EnvelopeInput>(sealed: Envelope, options: FromEnvelopeEventOptions<T>): SealedEvent<T>;
     get id(): ARID;
     get note(): string;
-    static open(sealed: Envelope, options: OpenOptions): SealedEvent<string>;
-    static open<T extends EnvelopeInput>(sealed: Envelope, options: OpenEventOptions<T>): SealedEvent<T>;
     get peerContinuation(): Envelope | undefined;
-    seal(input?: SealOptions): Envelope;
     get sender(): XIDDocument;
     get state(): Envelope | undefined;
-    toEnvelope(): Envelope;
+    toEnvelope(input?: ToEnvelopeOptions): Envelope;
     toString(): string;
     withDate(date: DateInput): SealedEvent<T>;
     withNote(note: string): SealedEvent<T>;
@@ -192,23 +202,22 @@ export class SealedRequest implements ToEnvelope {
     get date(): Date | undefined;
     equals(other: SealedRequest): boolean;
     get expressionEnvelope(): Envelope;
-    extractOptionalParameter<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T | undefined;
-    extractParameter<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T;
-    extractParameters<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T[];
+    extractObjectForParameter<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T;
+    extractObjectsForParameter<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T[];
+    extractOptionalObjectForParameter<T>(param: ParameterID | Parameter, decoder: CborDecoder<T>): T | undefined;
     static from(func: Function_2 | Expression | FunctionID, input: SealedRequestInput): SealedRequest;
+    static fromEnvelope(sealed: Envelope, options: FromEnvelopeOptions): SealedRequest;
     get function(): Function_2;
     get id(): ARID;
     get note(): string;
     objectForParameter(param: ParameterID | Parameter): Envelope;
-    static open(sealed: Envelope, options: OpenOptions): SealedRequest;
+    objectsForParameter(param: ParameterID | Parameter): Envelope[];
     parameter(param: ParameterID | Parameter): Envelope | undefined;
-    parameters(param: ParameterID | Parameter): Envelope[];
     get peerContinuation(): Envelope | undefined;
     get request(): Request_2;
-    seal(input?: SealOptions): Envelope;
     get sender(): XIDDocument;
     get state(): Envelope | undefined;
-    toEnvelope(): Envelope;
+    toEnvelope(input?: ToEnvelopeOptions): Envelope;
     toString(): string;
     withDate(date: DateInput): SealedRequest;
     withNote(note: string): SealedRequest;
@@ -229,23 +238,24 @@ export interface SealedRequestInput {
 export class SealedResponse implements ToEnvelope {
     static earlyFailure(input: SealedResponseInput): SealedResponse;
     equals(other: SealedResponse): boolean;
+    get err(): ResponseErr | undefined;
     get error(): Envelope;
     expectId(): ARID;
     extractError<T>(decoder: CborDecoder<T>): T;
     extractResult<T>(decoder: CborDecoder<T>): T;
     static failure(id: ARID, input: SealedResponseInput): SealedResponse;
+    static fromEnvelope(sealed: Envelope, options: FromEnvelopeOptions): SealedResponse;
     get id(): ARID | undefined;
     get isErr(): boolean;
     get isOk(): boolean;
-    static open(sealed: Envelope, options: OpenOptions): SealedResponse;
+    get ok(): ResponseOk | undefined;
     get peerContinuation(): Envelope | undefined;
     get response(): Response_2;
     get result(): Envelope;
-    seal(input?: SealOptions): Envelope;
     get sender(): XIDDocument;
     get state(): Envelope | undefined;
     static success(id: ARID, input: SealedResponseInput): SealedResponse;
-    toEnvelope(): Envelope;
+    toEnvelope(input?: ToEnvelopeOptions): Envelope;
     toString(): string;
     withError(error: EnvelopeInput | undefined): SealedResponse;
     withPeerContinuation(peerContinuation: Envelope | undefined): SealedResponse;
@@ -261,7 +271,7 @@ export interface SealedResponseInput {
 }
 
 // @public
-export interface SealOptions {
+export interface ToEnvelopeOptions {
     recipients?: readonly XIDDocument[] | undefined;
     signer?: Signer | undefined;
     validUntil?: DateInput | undefined;
