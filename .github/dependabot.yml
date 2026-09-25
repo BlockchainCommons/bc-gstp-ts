@@ -6,6 +6,8 @@ updates:
       interval: "weekly"
     labels: [ "dependencies" ]
     reviewers: ["leonardocustodio"]
+    allow:
+      - dependency-type: "production"
     groups:
       node:
         patterns:
