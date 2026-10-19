@@ -59,7 +59,7 @@
     "api:check": "bun scripts/api-snapshot.ts --check && bun scripts/api-report.ts",
     "clean": "rm -rf dist",
     "docs": "typedoc",
-    "postinstall": "bun scripts/pin-lint-typescript.ts",
+    "prepare": "bun scripts/pin-lint-typescript.ts",
     "prepublishOnly": "npm run build",
     "lint:pkg": "publint && attw --pack . --profile node16",
     "check:deps": "bun scripts/check-deps.ts",
