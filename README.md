@@ -99,6 +99,7 @@ Runnable examples live in the [`examples/`](https://github.com/BlockchainCommons
 
 ### Version History
 
+- **1.0.0-beta.5 (October 19, 2026)** - Installs with npm on a host without Bun: the TypeScript 6 pin for the lint tools runs from `prepare`, not `postinstall` ([bc-components-ts#11](https://github.com/BlockchainCommons/bc-components-ts/issues/11)).
 - **1.0.0-beta.1** - Initial beta implementation.
 
 ### Roadmap
